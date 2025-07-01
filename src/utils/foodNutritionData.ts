@@ -161,31 +161,95 @@ export interface NutritionPer100g {
   fiber: number;
 }
 
-// Standar kandungan gizi per 100 gram untuk setiap kategori
+// Standar kandungan gizi dan berat standar untuk setiap kategori
 export const nutritionStandards = {
-  carbohydrate: { energy: 175, protein: 4, fat: 0, carbohydrate: 40, fiber: 0 },
-  plantProtein: { energy: 160, protein: 12, fat: 6, carbohydrate: 16, fiber: 0 }, // per 50g tempe x 2
-  animalProtein: { energy: 125, protein: 17.5, fat: 5, carbohydrate: 0, fiber: 0 }, // per 40g ikan x 2.5
-  fatGroupA: { energy: 50, protein: 7, fat: 2, carbohydrate: 0, fiber: 0 },
-  fatGroupB: { energy: 75, protein: 7, fat: 5, carbohydrate: 0, fiber: 0 },
-  fatGroupC: { energy: 150, protein: 7, fat: 13, carbohydrate: 0, fiber: 0 },
-  vegetableGroupB: { energy: 25, protein: 1, fat: 0, carbohydrate: 5, fiber: 0 },
-  vegetableGroupC: { energy: 50, protein: 3, fat: 0, carbohydrate: 10, fiber: 0 },
-  fruit: { energy: 50, protein: 0, fat: 0, carbohydrate: 10, fiber: 0 }
+  carbohydrate: { 
+    energy: 175, 
+    protein: 4, 
+    fat: 0, 
+    carbohydrate: 40, 
+    fiber: 0,
+    standardWeight: 100 // berat standar nasi per 100g
+  },
+  plantProtein: { 
+    energy: 80, 
+    protein: 6, 
+    fat: 3, 
+    carbohydrate: 8, 
+    fiber: 0,
+    standardWeight: 50 // berat standar tempe per 50g
+  },
+  animalProtein: { 
+    energy: 50, 
+    protein: 7, 
+    fat: 2, 
+    carbohydrate: 0, 
+    fiber: 0,
+    standardWeight: 40 // berat standar ikan segar per 40g
+  },
+  fatGroupA: { 
+    energy: 50, 
+    protein: 7, 
+    fat: 2, 
+    carbohydrate: 0, 
+    fiber: 0,
+    standardWeight: 100 // per 100g
+  },
+  fatGroupB: { 
+    energy: 75, 
+    protein: 7, 
+    fat: 5, 
+    carbohydrate: 0, 
+    fiber: 0,
+    standardWeight: 100 // per 100g
+  },
+  fatGroupC: { 
+    energy: 150, 
+    protein: 7, 
+    fat: 13, 
+    carbohydrate: 0, 
+    fiber: 0,
+    standardWeight: 100 // per 100g
+  },
+  vegetableGroupB: { 
+    energy: 25, 
+    protein: 1, 
+    fat: 0, 
+    carbohydrate: 5, 
+    fiber: 0,
+    standardWeight: 100 // per 100g
+  },
+  vegetableGroupC: { 
+    energy: 50, 
+    protein: 3, 
+    fat: 0, 
+    carbohydrate: 10, 
+    fiber: 0,
+    standardWeight: 100 // per 100g
+  },
+  fruit: { 
+    energy: 50, 
+    protein: 0, 
+    fat: 0, 
+    carbohydrate: 10, 
+    fiber: 0,
+    standardWeight: 100 // pisang ambon per 100g
+  }
 };
 
-// Fungsi untuk menghitung kandungan gizi per sajian
+// Fungsi untuk menghitung kandungan gizi per sajian dengan rumus yang benar
 export const calculateNutritionPerServing = (
-  servingWeight: number,
-  nutritionPer100g: NutritionPer100g
+  actualWeight: number,
+  standardWeight: number,
+  nutritionStandard: any
 ): NutritionPer100g => {
-  const ratio = servingWeight / 100;
+  const ratio = actualWeight / standardWeight;
   
   return {
-    energy: Math.round(nutritionPer100g.energy * ratio),
-    protein: Math.round(nutritionPer100g.protein * ratio * 10) / 10,
-    fat: Math.round(nutritionPer100g.fat * ratio * 10) / 10,
-    carbohydrate: Math.round(nutritionPer100g.carbohydrate * ratio * 10) / 10,
-    fiber: Math.round(nutritionPer100g.fiber * ratio * 10) / 10
+    energy: Math.round(nutritionStandard.energy * ratio),
+    protein: Math.round(nutritionStandard.protein * ratio * 10) / 10,
+    fat: Math.round(nutritionStandard.fat * ratio * 10) / 10,
+    carbohydrate: Math.round(nutritionStandard.carbohydrate * ratio * 10) / 10,
+    fiber: Math.round(nutritionStandard.fiber * ratio * 10) / 10
   };
 };

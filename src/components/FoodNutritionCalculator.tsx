@@ -25,6 +25,7 @@ import {
 const FoodNutritionCalculator = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
+  const [actualWeight, setActualWeight] = useState<number>(0);
   const [results, setResults] = useState<NutritionPer100g | null>(null);
 
   const foodCategories = {
@@ -42,6 +43,7 @@ const FoodNutritionCalculator = () => {
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     setSelectedFood(null);
+    setActualWeight(0);
     setResults(null);
   };
 
@@ -49,12 +51,13 @@ const FoodNutritionCalculator = () => {
     const foods = foodCategories[selectedCategory as keyof typeof foodCategories]?.foods || [];
     const food = foods.find(f => f.name === foodName);
     setSelectedFood(food || null);
+    setActualWeight(food?.weight || 0);
     setResults(null);
   };
 
   const handleCalculate = () => {
-    if (!selectedFood || !selectedCategory) {
-      alert('Mohon pilih makanan terlebih dahulu');
+    if (!selectedFood || !selectedCategory || actualWeight <= 0) {
+      alert('Mohon pilih makanan dan masukkan berat aktual terlebih dahulu');
       return;
     }
 
@@ -64,13 +67,18 @@ const FoodNutritionCalculator = () => {
       return;
     }
 
-    const calculatedResults = calculateNutritionPerServing(selectedFood.weight, nutritionStandard);
+    const calculatedResults = calculateNutritionPerServing(
+      actualWeight, 
+      nutritionStandard.standardWeight, 
+      nutritionStandard
+    );
     setResults(calculatedResults);
   };
 
   const resetForm = () => {
     setSelectedCategory('');
     setSelectedFood(null);
+    setActualWeight(0);
     setResults(null);
   };
 
@@ -128,17 +136,31 @@ const FoodNutritionCalculator = () => {
           </div>
 
           {selectedFood && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-800 mb-2">Informasi Porsi:</h4>
-              <p className="text-blue-700">
-                <strong>{selectedFood.name}</strong> - {selectedFood.portion} ({selectedFood.weight}g)
-              </p>
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">Informasi Makanan Penukar:</h4>
+                <p className="text-blue-700">
+                  <strong>{selectedFood.name}</strong> - {selectedFood.portion} (Berat standar: {selectedFood.weight}g)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Berat Aktual Makanan (gram)</Label>
+                <Input
+                  type="number"
+                  value={actualWeight}
+                  onChange={(e) => setActualWeight(Number(e.target.value))}
+                  placeholder="Masukkan berat aktual dalam gram"
+                  min="0"
+                  step="0.1"
+                />
+              </div>
             </div>
           )}
 
           {selectedCategory && (
             <div className="p-4 bg-amber-50 rounded-lg">
-              <h4 className="font-medium text-amber-800 mb-2">Standar Kandungan Gizi per 100g:</h4>
+              <h4 className="font-medium text-amber-800 mb-2">Standar Kandungan Gizi per {getNutritionStandard()?.standardWeight}g:</h4>
               {(() => {
                 const standard = getNutritionStandard();
                 return standard ? (
@@ -158,7 +180,7 @@ const FoodNutritionCalculator = () => {
             <Button 
               onClick={handleCalculate} 
               className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
-              disabled={!selectedFood}
+              disabled={!selectedFood || actualWeight <= 0}
             >
               Hitung Kandungan Gizi
             </Button>
@@ -181,7 +203,7 @@ const FoodNutritionCalculator = () => {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <h4 className="font-semibold text-lg">Kandungan Gizi per Sajian ({selectedFood.weight}g):</h4>
+                <h4 className="font-semibold text-lg">Kandungan Gizi untuk {actualWeight}g:</h4>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
                     <span className="font-medium">Energi:</span>
@@ -207,19 +229,29 @@ const FoodNutritionCalculator = () => {
               </div>
 
               <div className="space-y-4">
-                <h4 className="font-semibold text-lg">Informasi Porsi:</h4>
+                <h4 className="font-semibold text-lg">Detail Perhitungan:</h4>
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <p><strong>Nama:</strong> {selectedFood.name}</p>
-                  <p><strong>Takaran:</strong> {selectedFood.portion}</p>
-                  <p><strong>Berat:</strong> {selectedFood.weight} gram</p>
+                  <p><strong>Makanan:</strong> {selectedFood.name}</p>
+                  <p><strong>Berat Standar:</strong> {selectedFood.weight}g</p>
+                  <p><strong>Berat Aktual:</strong> {actualWeight}g</p>
                 </div>
                 
                 <div className="p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Rumus:</strong> (Berat makanan penukar dalam gram ÷ 100 gram) × Nilai zat gizi standar per 100g
+                  <p className="text-sm text-blue-800 mb-2">
+                    <strong>Rumus:</strong> (Berat aktual ÷ Berat standar) × Nilai gizi standar
                   </p>
-                  <p className="text-sm text-blue-600 mt-2">
-                    ({selectedFood.weight}g ÷ 100g) × Nilai gizi standar per 100g
+                  <p className="text-sm text-blue-600">
+                    ({actualWeight}g ÷ {selectedFood.weight}g) × Nilai gizi standar
+                  </p>
+                  <p className="text-sm text-blue-600">
+                    = {(actualWeight / selectedFood.weight).toFixed(2)} × Nilai gizi standar
+                  </p>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>Contoh untuk Energi:</strong><br/>
+                    ({actualWeight} ÷ {selectedFood.weight}) × {getNutritionStandard()?.energy} kkal = {results.energy} kkal
                   </p>
                 </div>
               </div>
