@@ -20,8 +20,28 @@ interface NutritionNeeds {
   category: string;
 }
 
+interface NutritionDataItem {
+  energy: number;
+  protein: number;
+  fatTotal: number;
+  omega3: number;
+  omega6: number;
+  carb: number;
+  fiber: number;
+  water: number;
+}
+
 // Data AKG berdasarkan tabel yang diberikan
-const nutritionData = {
+const nutritionData: {
+  male: {
+    children: Record<string, NutritionDataItem>;
+    adult: Record<string, NutritionDataItem>;
+  };
+  female: {
+    children: Record<string, NutritionDataItem>;
+    adult: Record<string, NutritionDataItem>;
+  };
+} = {
   male: {
     children: {
       '0-5months': { energy: 550, protein: 9, fatTotal: 31, omega3: 0.5, omega6: 4.4, carb: 59, fiber: 0, water: 700 },
@@ -83,27 +103,26 @@ export function calculateNutritionNeeds(userData: UserData): NutritionNeeds {
   const ageCategory = getAgeCategory(age);
   const categoryType = getCategoryType(age);
   
-  // Dapatkan data gizi berdasarkan gender, kategori umur, dan tipe
-  const genderKey = gender as keyof typeof nutritionData;
-  const baseData = nutritionData[genderKey]?.[categoryType]?.[ageCategory as keyof typeof nutritionData[typeof genderKey][typeof categoryType]];
+  // Default fallback data
+  const defaultData: NutritionDataItem = {
+    energy: 2650,
+    protein: 65,
+    fatTotal: 75,
+    omega3: 1.6,
+    omega6: 17,
+    carb: 430,
+    fiber: 37,
+    water: 2500
+  };
+
+  // Get the appropriate gender data
+  const genderData = gender === 'male' ? nutritionData.male : nutritionData.female;
   
-  if (!baseData) {
-    // Fallback ke data dewasa 19-29 tahun jika tidak ada data spesifik
-    const fallbackData = nutritionData[genderKey]?.adult?.['19-29years'] || nutritionData.male.adult['19-29years'];
-    return {
-      energy: fallbackData.energy,
-      protein: fallbackData.protein,
-      fat: {
-        total: fallbackData.fatTotal,
-        omega3: fallbackData.omega3,
-        omega6: fallbackData.omega6
-      },
-      carbohydrate: fallbackData.carb,
-      fiber: fallbackData.fiber,
-      water: fallbackData.water,
-      category: `${gender === 'male' ? 'Laki-laki' : 'Perempuan'} ${age} tahun`
-    };
-  }
+  // Get the appropriate category data
+  const categoryData = genderData[categoryType];
+  
+  // Get the specific age data or use default
+  const baseData = categoryData[ageCategory] || defaultData;
 
   return {
     energy: baseData.energy,
