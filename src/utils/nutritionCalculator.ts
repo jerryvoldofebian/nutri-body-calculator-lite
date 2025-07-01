@@ -1,4 +1,3 @@
-
 interface UserData {
   gender: string;
   weight: number;
@@ -96,6 +95,89 @@ function getAgeCategory(age: number): string {
 
 function getCategoryType(age: number): 'children' | 'adult' {
   return age <= 9 ? 'children' : 'adult';
+}
+
+// Fungsi untuk menghitung rata-rata kebutuhan gizi berdasarkan kelompok umur
+export function calculateAverageNutrition(age: number): NutritionNeeds {
+  const ageCategory = getAgeCategory(age);
+  const categoryType = getCategoryType(age);
+  
+  // Default fallback data
+  const defaultData: NutritionDataItem = {
+    energy: 2650,
+    protein: 65,
+    fatTotal: 75,
+    omega3: 1.6,
+    omega6: 17,
+    carb: 430,
+    fiber: 37,
+    water: 2500
+  };
+
+  // Get data for both genders
+  const maleData = nutritionData.male[categoryType][ageCategory] || defaultData;
+  const femaleData = nutritionData.female[categoryType][ageCategory] || defaultData;
+  
+  // Calculate averages
+  const averageData = {
+    energy: Math.round((maleData.energy + femaleData.energy) / 2),
+    protein: Math.round((maleData.protein + femaleData.protein) / 2),
+    fatTotal: Math.round((maleData.fatTotal + femaleData.fatTotal) / 2),
+    omega3: Math.round((maleData.omega3 + femaleData.omega3) / 2 * 10) / 10,
+    omega6: Math.round((maleData.omega6 + femaleData.omega6) / 2 * 10) / 10,
+    carb: Math.round((maleData.carb + femaleData.carb) / 2),
+    fiber: Math.round((maleData.fiber + femaleData.fiber) / 2),
+    water: Math.round((maleData.water + femaleData.water) / 2)
+  };
+
+  return {
+    energy: averageData.energy,
+    protein: averageData.protein,
+    fat: {
+      total: averageData.fatTotal,
+      omega3: averageData.omega3,
+      omega6: averageData.omega6
+    },
+    carbohydrate: averageData.carb,
+    fiber: averageData.fiber,
+    water: averageData.water,
+    category: `Rata-rata ${age} tahun (${ageCategory.replace(/years|months/, ' tahun').replace('-', '-')})`
+  };
+}
+
+// Fungsi untuk menghitung kontribusi energi per waktu makan
+export interface MealContribution {
+  breakfast: number;    // 25%
+  lunch: number;       // 30%
+  dinner: number;      // 25%
+  morningSnack: number; // 10%
+  afternoonSnack: number; // 10%
+}
+
+export function calculateMealContribution(totalNutrition: NutritionNeeds): {
+  energy: MealContribution;
+  protein: MealContribution;
+  fat: MealContribution;
+  carbohydrate: MealContribution;
+  fiber: MealContribution;
+  water: MealContribution;
+} {
+  const distributeMeal = (total: number): MealContribution => ({
+    breakfast: Math.round(total * 0.25),
+    lunch: Math.round(total * 0.30),
+    dinner: Math.round(total * 0.25),
+    morningSnack: Math.round(total * 0.10),
+    afternoonSnack: Math.round(total * 0.10)
+  });
+
+  return {
+    energy: distributeMeal(totalNutrition.energy),
+    protein: distributeMeal(totalNutrition.protein),
+    fat: distributeMeal(totalNutrition.fat.total),
+    carbohydrate: distributeMeal(totalNutrition.carbohydrate),
+    fiber: distributeMeal(totalNutrition.fiber),
+    water: distributeMeal(totalNutrition.water)
+  };
 }
 
 export function calculateNutritionNeeds(userData: UserData): NutritionNeeds {
