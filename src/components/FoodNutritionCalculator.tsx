@@ -9,8 +9,14 @@ import { ChefHat } from "lucide-react";
 import { 
   carbohydrateFoods, 
   plantProteinFoods, 
-  animalProteinFoods, 
-  otherAnimalProteinFoods,
+  animalProteinFoods,
+  fatGroupAFoods,
+  fatGroupBFoods,
+  fatGroupCFoods,
+  vegetableGroupBFoods,
+  vegetableGroupCFoods,
+  fruitFoods,
+  nutritionStandards,
   calculateNutritionPerServing,
   FoodItem,
   NutritionPer100g
@@ -19,20 +25,18 @@ import {
 const FoodNutritionCalculator = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-  const [nutritionPer100g, setNutritionPer100g] = useState({
-    energy: '',
-    protein: '',
-    fat: '',
-    carbohydrate: '',
-    fiber: ''
-  });
   const [results, setResults] = useState<NutritionPer100g | null>(null);
 
   const foodCategories = {
-    carbohydrate: { name: 'Sumber Karbohidrat', foods: carbohydrateFoods },
-    plantProtein: { name: 'Protein Nabati', foods: plantProteinFoods },
+    carbohydrate: { name: 'Sumber Karbohidrat (Nasi)', foods: carbohydrateFoods },
+    plantProtein: { name: 'Protein Nabati (Tempe)', foods: plantProteinFoods },
     animalProtein: { name: 'Protein Hewani (Ikan Segar)', foods: animalProteinFoods },
-    otherAnimalProtein: { name: 'Protein Hewani Lainnya', foods: otherAnimalProteinFoods }
+    fatGroupA: { name: 'Lemak Golongan A (Rendah Lemak)', foods: fatGroupAFoods },
+    fatGroupB: { name: 'Lemak Golongan B (Sedang Lemak)', foods: fatGroupBFoods },
+    fatGroupC: { name: 'Lemak Golongan C (Tinggi Lemak)', foods: fatGroupCFoods },
+    vegetableGroupB: { name: 'Sayuran Golongan B', foods: vegetableGroupBFoods },
+    vegetableGroupC: { name: 'Sayuran Golongan C', foods: vegetableGroupCFoods },
+    fruit: { name: 'Buah-buahan (Pisang Ambon)', foods: fruitFoods }
   };
 
   const handleCategoryChange = (category: string) => {
@@ -48,42 +52,31 @@ const FoodNutritionCalculator = () => {
     setResults(null);
   };
 
-  const handleNutritionChange = (field: string, value: string) => {
-    setNutritionPer100g(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   const handleCalculate = () => {
-    if (!selectedFood) {
+    if (!selectedFood || !selectedCategory) {
       alert('Mohon pilih makanan terlebih dahulu');
       return;
     }
 
-    const nutrition = {
-      energy: parseFloat(nutritionPer100g.energy) || 0,
-      protein: parseFloat(nutritionPer100g.protein) || 0,
-      fat: parseFloat(nutritionPer100g.fat) || 0,
-      carbohydrate: parseFloat(nutritionPer100g.carbohydrate) || 0,
-      fiber: parseFloat(nutritionPer100g.fiber) || 0
-    };
+    const nutritionStandard = nutritionStandards[selectedCategory as keyof typeof nutritionStandards];
+    if (!nutritionStandard) {
+      alert('Kategori makanan tidak valid');
+      return;
+    }
 
-    const calculatedResults = calculateNutritionPerServing(selectedFood.weight, nutrition);
+    const calculatedResults = calculateNutritionPerServing(selectedFood.weight, nutritionStandard);
     setResults(calculatedResults);
   };
 
   const resetForm = () => {
     setSelectedCategory('');
     setSelectedFood(null);
-    setNutritionPer100g({
-      energy: '',
-      protein: '',
-      fat: '',
-      carbohydrate: '',
-      fiber: ''
-    });
     setResults(null);
+  };
+
+  const getNutritionStandard = () => {
+    if (!selectedCategory) return null;
+    return nutritionStandards[selectedCategory as keyof typeof nutritionStandards];
   };
 
   return (
@@ -143,57 +136,23 @@ const FoodNutritionCalculator = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Energi per 100g (kkal)</Label>
-              <Input
-                type="number"
-                placeholder="Masukkan energi"
-                value={nutritionPer100g.energy}
-                onChange={(e) => handleNutritionChange('energy', e.target.value)}
-              />
+          {selectedCategory && (
+            <div className="p-4 bg-amber-50 rounded-lg">
+              <h4 className="font-medium text-amber-800 mb-2">Standar Kandungan Gizi per 100g:</h4>
+              {(() => {
+                const standard = getNutritionStandard();
+                return standard ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-amber-700">
+                    <div>Energi: {standard.energy} kkal</div>
+                    <div>Protein: {standard.protein} g</div>
+                    <div>Lemak: {standard.fat} g</div>
+                    <div>Karbohidrat: {standard.carbohydrate} g</div>
+                    <div>Serat: {standard.fiber} g</div>
+                  </div>
+                ) : null;
+              })()}
             </div>
-
-            <div className="space-y-2">
-              <Label>Protein per 100g (g)</Label>
-              <Input
-                type="number"
-                placeholder="Masukkan protein"
-                value={nutritionPer100g.protein}
-                onChange={(e) => handleNutritionChange('protein', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Lemak per 100g (g)</Label>
-              <Input
-                type="number"
-                placeholder="Masukkan lemak"
-                value={nutritionPer100g.fat}
-                onChange={(e) => handleNutritionChange('fat', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Karbohidrat per 100g (g)</Label>
-              <Input
-                type="number"
-                placeholder="Masukkan karbohidrat"
-                value={nutritionPer100g.carbohydrate}
-                onChange={(e) => handleNutritionChange('carbohydrate', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Serat per 100g (g)</Label>
-              <Input
-                type="number"
-                placeholder="Masukkan serat"
-                value={nutritionPer100g.fiber}
-                onChange={(e) => handleNutritionChange('fiber', e.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="flex gap-3">
             <Button 
@@ -257,10 +216,10 @@ const FoodNutritionCalculator = () => {
                 
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Rumus:</strong> (Takaran saji dalam gram ÷ 100 gram) × Nilai zat gizi per 100g
+                    <strong>Rumus:</strong> (Berat makanan penukar dalam gram ÷ 100 gram) × Nilai zat gizi standar per 100g
                   </p>
                   <p className="text-sm text-blue-600 mt-2">
-                    ({selectedFood.weight}g ÷ 100g) × Nilai gizi per 100g
+                    ({selectedFood.weight}g ÷ 100g) × Nilai gizi standar per 100g
                   </p>
                 </div>
               </div>
