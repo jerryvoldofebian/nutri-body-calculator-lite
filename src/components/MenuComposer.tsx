@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -183,7 +184,7 @@ const MenuComposer = () => {
               </Select>
               {targetAge > 9 && (
                 <p className="text-xs text-gray-500">
-                  * Untuk umur > 9 tahun menggunakan rata-rata laki-laki dan perempuan
+                  * Untuk umur {'>'}  9 tahun menggunakan rata-rata laki-laki dan perempuan
                 </p>
               )}
             </div>
@@ -254,7 +255,7 @@ const MenuComposer = () => {
                     <p><strong>Perhitungan Target Kebutuhan Gizi:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-sm mt-2">
                       <li><strong>Bayi/Anak (≤ 9 tahun):</strong> Menggunakan nilai kebutuhan gizi individual sesuai jenis kelamin</li>
-                      <li><strong>Remaja/Dewasa (> 9 tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
+                      <li><strong>Remaja/Dewasa ({'>'}  9 tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
                     </ul>
                   </div>
 
