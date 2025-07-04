@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { Plus, Trash2, UtensilsCrossed, Info, Target } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   carbohydrateFoods, 
   plantProteinFoods, 
@@ -21,6 +21,7 @@ import {
   calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
+import { calculateNutritionNeeds } from "../utils/nutritionCalculator";
 
 interface MenuNutrition {
   energy: number;
@@ -44,6 +45,11 @@ const MenuComposer = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [actualWeight, setActualWeight] = useState<number>(0);
+  
+  // Age-specific targeting
+  const [targetAge, setTargetAge] = useState<number>(25);
+  const [targetGender, setTargetGender] = useState<string>('male');
+  const [showCalculationInfo, setShowCalculationInfo] = useState(false);
 
   const foodCategories = {
     carbohydrate: { name: 'Sumber Karbohidrat', foods: carbohydrateFoods },
@@ -56,6 +62,18 @@ const MenuComposer = () => {
     vegetableGroupC: { name: 'Sayuran Golongan C', foods: vegetableGroupCFoods },
     fruit: { name: 'Buah-buahan', foods: fruitFoods }
   };
+
+  // Get nutrition targets for specific age and gender
+  const getNutritionTargets = () => {
+    return calculateNutritionNeeds({
+      gender: targetGender,
+      weight: 60, // Default weight for calculation
+      height: 165, // Default height for calculation
+      age: targetAge
+    });
+  };
+
+  const targets = getNutritionTargets();
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
@@ -130,8 +148,107 @@ const MenuComposer = () => {
 
   const totalNutrition = calculateTotalNutrition();
 
+  // Calculate percentage achievement
+  const getAchievementPercentage = (actual: number, target: number) => {
+    return Math.round((actual / target) * 100);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Age Target Selection */}
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Target Kelompok Umur
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Jenis Kelamin Target</Label>
+              <Select value={targetGender} onValueChange={setTargetGender}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Laki-laki</SelectItem>
+                  <SelectItem value="female">Perempuan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Umur Target (tahun)</Label>
+              <Input
+                type="number"
+                value={targetAge}
+                onChange={(e) => setTargetAge(Number(e.target.value))}
+                min="0"
+                max="100"
+              />
+            </div>
+          </div>
+          
+          <div className="mt-4 p-4 bg-purple-50 rounded-lg">
+            <h4 className="font-semibold text-purple-800 mb-2">Target Kebutuhan Gizi Harian:</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              <div><strong>Energi:</strong> {targets.energy} kkal</div>
+              <div><strong>Protein:</strong> {targets.protein} g</div>
+              <div><strong>Lemak:</strong> {targets.fat.total} g</div>
+              <div><strong>Karbohidrat:</strong> {targets.carbohydrate} g</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Calculation Information */}
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <CardTitle className="flex items-center gap-2">
+            <Info className="h-5 w-5" />
+            Informasi Cara Perhitungan
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowCalculationInfo(!showCalculationInfo)}
+              className="text-white hover:bg-white/20"
+            >
+              {showCalculationInfo ? 'Sembunyikan' : 'Tampilkan'}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        {showCalculationInfo && (
+          <CardContent className="p-6">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-3">
+                  <p><strong>Rumus Perhitungan Gizi:</strong></p>
+                  <p className="bg-blue-50 p-3 rounded">
+                    <code>(Berat Aktual Makanan ÷ Berat Standar Makanan Penukar) × Nilai Zat Gizi Standar</code>
+                  </p>
+                  <p><strong>Contoh:</strong></p>
+                  <p>Bihun 10 gram → Energi: (10 ÷ 50) × 175 kkal = 35 kkal</p>
+                  <p><strong>Standar Gizi per Kategori:</strong></p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Karbohidrat (100g nasi):</strong> 175 kkal, 4g protein, 40g karbohidrat</li>
+                    <li><strong>Protein Nabati (50g tempe):</strong> 80 kkal, 6g protein, 3g lemak, 8g karbohidrat</li>
+                    <li><strong>Protein Hewani (40g ikan):</strong> 50 kkal, 7g protein, 2g lemak</li>
+                    <li><strong>Lemak Gol. A (100g):</strong> 50 kkal, 7g protein, 2g lemak</li>
+                    <li><strong>Lemak Gol. B (100g):</strong> 75 kkal, 7g protein, 5g lemak</li>
+                    <li><strong>Lemak Gol. C (100g):</strong> 150 kkal, 7g protein, 13g lemak</li>
+                    <li><strong>Sayuran Gol. B (100g):</strong> 25 kkal, 1g protein, 5g karbohidrat</li>
+                    <li><strong>Sayuran Gol. C (100g):</strong> 50 kkal, 3g protein, 10g karbohidrat</li>
+                    <li><strong>Buah-buahan (100g):</strong> 50 kkal, 10g karbohidrat</li>
+                  </ul>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Menu Composer */}
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white">
           <CardTitle className="flex items-center gap-2">
@@ -287,36 +404,90 @@ const MenuComposer = () => {
             </div>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Nutrition Achievement vs Target */}
               <div className="space-y-4">
-                <h4 className="font-semibold text-lg">Ringkasan Gizi Menu</h4>
+                <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi</h4>
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                    <span className="font-medium">Total Energi:</span>
-                    <span className="font-bold text-yellow-700">{totalNutrition.energy} kkal</span>
+                  <div className="p-3 bg-yellow-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Energi:</span>
+                      <span className="font-bold text-yellow-700">
+                        {totalNutrition.energy} / {targets.energy} kkal
+                      </span>
+                    </div>
+                    <div className="w-full bg-yellow-200 rounded-full h-2">
+                      <div 
+                        className="bg-yellow-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.energy, targets.energy), 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-yellow-600">
+                      {getAchievementPercentage(totalNutrition.energy, targets.energy)}% dari target
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                    <span className="font-medium">Total Protein:</span>
-                    <span className="font-bold text-red-700">{totalNutrition.protein} g</span>
+
+                  <div className="p-3 bg-red-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Protein:</span>
+                      <span className="font-bold text-red-700">
+                        {totalNutrition.protein} / {targets.protein} g
+                      </span>
+                    </div>
+                    <div className="w-full bg-red-200 rounded-full h-2">
+                      <div 
+                        className="bg-red-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.protein, targets.protein), 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-red-600">
+                      {getAchievementPercentage(totalNutrition.protein, targets.protein)}% dari target
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                    <span className="font-medium">Total Lemak:</span>
-                    <span className="font-bold text-orange-700">{totalNutrition.fat} g</span>
+
+                  <div className="p-3 bg-orange-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Lemak:</span>
+                      <span className="font-bold text-orange-700">
+                        {totalNutrition.fat} / {targets.fat.total} g
+                      </span>
+                    </div>
+                    <div className="w-full bg-orange-200 rounded-full h-2">
+                      <div 
+                        className="bg-orange-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.fat, targets.fat.total), 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-orange-600">
+                      {getAchievementPercentage(totalNutrition.fat, targets.fat.total)}% dari target
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
-                    <span className="font-medium">Total Karbohidrat:</span>
-                    <span className="font-bold text-amber-700">{totalNutrition.carbohydrate} g</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span className="font-medium">Total Serat:</span>
-                    <span className="font-bold text-green-700">{totalNutrition.fiber} g</span>
+
+                  <div className="p-3 bg-amber-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium">Karbohidrat:</span>
+                      <span className="font-bold text-amber-700">
+                        {totalNutrition.carbohydrate} / {targets.carbohydrate} g
+                      </span>
+                    </div>
+                    <div className="w-full bg-amber-200 rounded-full h-2">
+                      <div 
+                        className="bg-amber-600 h-2 rounded-full" 
+                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.carbohydrate, targets.carbohydrate), 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-amber-600">
+                      {getAchievementPercentage(totalNutrition.carbohydrate, targets.carbohydrate)}% dari target
+                    </span>
                   </div>
                 </div>
               </div>
 
+              {/* Menu Information */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-lg">Komposisi Menu</h4>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p><strong>Nama Menu:</strong> {menuName || 'Tidak ada nama'}</p>
+                  <p><strong>Target:</strong> {targetGender === 'male' ? 'Laki-laki' : 'Perempuan'} {targetAge} tahun</p>
                   <p><strong>Jumlah Item:</strong> {menuItems.length} makanan</p>
                   <p><strong>Total Berat:</strong> {menuItems.reduce((total, item) => total + item.actualWeight, 0)} gram</p>
                 </div>
@@ -327,6 +498,18 @@ const MenuComposer = () => {
                   </p>
                   <div className="text-sm text-blue-600">
                     {Array.from(new Set(menuItems.map(item => getCategoryDisplayName(item.category)))).join(', ')}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-800 mb-2">
+                    <strong>Status Kecukupan Gizi:</strong>
+                  </p>
+                  <div className="text-sm text-green-600">
+                    {getAchievementPercentage(totalNutrition.energy, targets.energy) >= 80 ? 
+                      '✅ Menu sudah cukup memenuhi kebutuhan energi' : 
+                      '⚠️ Menu masih kurang memenuhi kebutuhan energi'
+                    }
                   </div>
                 </div>
               </div>
