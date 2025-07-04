@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calculator, Users, Clock, ChefHat } from "lucide-react";
+import { Calculator, Users, Clock, ChefHat, UtensilsCrossed } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import NutritionResults from "./NutritionResults";
 import AverageNutritionCalculator from "./AverageNutritionCalculator";
 import MealContributionCalculator from "./MealContributionCalculator";
 import FoodNutritionCalculator from "./FoodNutritionCalculator";
+import MenuComposer from "./MenuComposer";
 
 const NutritionCalculator = () => {
   const [formData, setFormData] = useState({
@@ -76,7 +78,7 @@ const NutritionCalculator = () => {
         </div>
 
         <Tabs defaultValue="individual" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Individual
@@ -92,6 +94,10 @@ const NutritionCalculator = () => {
             <TabsTrigger value="food" className="flex items-center gap-2">
               <ChefHat className="h-4 w-4" />
               Gizi Makanan
+            </TabsTrigger>
+            <TabsTrigger value="menu" className="flex items-center gap-2">
+              <UtensilsCrossed className="h-4 w-4" />
+              Susun Menu
             </TabsTrigger>
           </TabsList>
 
@@ -214,6 +220,10 @@ const NutritionCalculator = () => {
 
           <TabsContent value="food">
             <FoodNutritionCalculator />
+          </TabsContent>
+
+          <TabsContent value="menu">
+            <MenuComposer />
           </TabsContent>
         </Tabs>
       </div>
