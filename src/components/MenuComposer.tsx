@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, UtensilsCrossed, Info, Target } from "lucide-react";
+import { Plus, Trash2, UtensilsCrossed, Info, Target, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   carbohydrateFoods, 
@@ -21,7 +21,7 @@ import {
   calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
-import { calculateMenuNutritionNeeds } from "../utils/nutritionCalculator";
+import { calculateMenuNutritionNeeds, calculateMealContribution } from "../utils/nutritionCalculator";
 
 interface MenuNutrition {
   energy: number;
@@ -55,6 +55,9 @@ const MenuComposer = () => {
   const [targetAge, setTargetAge] = useState<number>(25);
   const [targetGender, setTargetGender] = useState<string>('male');
   const [showCalculationInfo, setShowCalculationInfo] = useState(false);
+  
+  // Meal type selection
+  const [selectedMealType, setSelectedMealType] = useState<string>('');
 
   const foodCategories = {
     carbohydrate: { name: 'Sumber Karbohidrat', foods: carbohydrateFoods },
@@ -68,10 +71,16 @@ const MenuComposer = () => {
     fruit: { name: 'Buah-buahan', foods: fruitFoods }
   };
 
+  const mealTypes = {
+    breakfast: { name: 'Sarapan', percentage: 25 },
+    lunch: { name: 'Makan Siang', percentage: 30 },
+    dinner: { name: 'Makan Malam', percentage: 25 }
+  };
+
   // Get nutrition targets for specific age and gender using new logic
   const getNutritionTargets = () => {
     // Untuk bayi/anak-anak (≤ 9 tahun), gunakan gender
-    // Untuk dewasa ({'>'}  9 tahun), gunakan rata-rata
+    // Untuk dewasa (> 9 tahun), gunakan rata-rata
     if (targetAge <= 9) {
       return calculateMenuNutritionNeeds(targetAge, targetGender);
     } else {
@@ -80,6 +89,7 @@ const MenuComposer = () => {
   };
 
   const targets = getNutritionTargets();
+  const mealContributions = calculateMealContribution(targets);
 
   // Calculate tolerance range (80% - 120%)
   const getToleranceRange = (value: number): ToleranceRange => ({
@@ -92,6 +102,27 @@ const MenuComposer = () => {
     protein: getToleranceRange(targets.protein),
     fat: getToleranceRange(targets.fat.total),
     carbohydrate: getToleranceRange(targets.carbohydrate)
+  };
+
+  // Get meal-specific targets and tolerance ranges
+  const getMealTargets = (mealType: string) => {
+    const percentage = mealTypes[mealType as keyof typeof mealTypes]?.percentage || 25;
+    return {
+      energy: Math.round(targets.energy * percentage / 100),
+      protein: Math.round(targets.protein * percentage / 100),
+      fat: Math.round(targets.fat.total * percentage / 100),
+      carbohydrate: Math.round(targets.carbohydrate * percentage / 100)
+    };
+  };
+
+  const getMealToleranceRanges = (mealType: string) => {
+    const mealTargets = getMealTargets(mealType);
+    return {
+      energy: getToleranceRange(mealTargets.energy),
+      protein: getToleranceRange(mealTargets.protein),
+      fat: getToleranceRange(mealTargets.fat),
+      carbohydrate: getToleranceRange(mealTargets.carbohydrate)
+    };
   };
 
   const handleCategoryChange = (category: string) => {
@@ -159,6 +190,7 @@ const MenuComposer = () => {
     setSelectedCategory('');
     setSelectedFood(null);
     setActualWeight(0);
+    setSelectedMealType('');
   };
 
   const getCategoryDisplayName = (category: string) => {
@@ -213,7 +245,7 @@ const MenuComposer = () => {
               </Select>
               {targetAge > 9 && (
                 <p className="text-xs text-gray-500">
-                  * Untuk umur {'>'}  9 tahun menggunakan rata-rata laki-laki dan perempuan
+                  * Untuk umur {targetAge > 9 ? '> 9' : '≤ 9'} tahun menggunakan rata-rata laki-laki dan perempuan
                 </p>
               )}
             </div>
@@ -260,6 +292,52 @@ const MenuComposer = () => {
         </CardContent>
       </Card>
 
+      {/* Meal Distribution Information */}
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Distribusi Kebutuhan Gizi per Waktu Makan
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {Object.entries(mealTypes).map(([key, meal]) => {
+              const mealTargets = getMealTargets(key);
+              const mealTolerances = getMealToleranceRanges(key);
+              
+              return (
+                <div key={key} className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-semibold text-green-800 mb-2">
+                    {meal.name} ({meal.percentage}%)
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div><strong>Energi:</strong> {mealTargets.energy} kkal</div>
+                    <div><strong>Protein:</strong> {mealTargets.protein} g</div>
+                    <div><strong>Lemak:</strong> {mealTargets.fat} g</div>
+                    <div><strong>Karbohidrat:</strong> {mealTargets.carbohydrate} g</div>
+                  </div>
+                  <div className="mt-3 p-2 bg-green-100 rounded text-xs">
+                    <div className="font-medium text-green-800 mb-1">Toleransi (80%-120%):</div>
+                    <div>E: {mealTolerances.energy.min}-{mealTolerances.energy.max} kkal</div>
+                    <div>P: {mealTolerances.protein.min}-{mealTolerances.protein.max} g</div>
+                    <div>L: {mealTolerances.fat.min}-{mealTolerances.fat.max} g</div>
+                    <div>K: {mealTolerances.carbohydrate.min}-{mealTolerances.carbohydrate.max} g</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Distribusi Waktu Makan:</strong> Sarapan 25%, Makan Siang 30%, Makan Malam 25%, Camilan Pagi 10%, Camilan Sore 10%
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+
       {/* Calculation Information */}
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
@@ -293,17 +371,28 @@ const MenuComposer = () => {
                     <p><strong>Perhitungan Target Kebutuhan Gizi:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-sm mt-2">
                       <li><strong>Bayi/Anak (≤ 9 tahun):</strong> Menggunakan nilai kebutuhan gizi individual sesuai jenis kelamin</li>
-                      <li><strong>Remaja/Dewasa ({'>'}  9 tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
+                      <li><strong>Remaja/Dewasa ({targetAge > 9 ? '> 9' : '≤ 9'} tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
                     </ul>
                   </div>
 
                   <div className="mt-4 p-3 bg-green-50 rounded">
                     <p><strong>Toleransi Kebutuhan Gizi:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-sm mt-2">
-                      <li><strong>Rentang Normal:</strong> 80% - 120% dari kebutuhan harian</li>
-                      <li><strong>Status Kurang:</strong> {' < '} 80% dari kebutuhan</li>
+                      <li><strong>Rentang Normal:</strong> 80% - 120% dari kebutuhan harian/per waktu makan</li>
+                      <li><strong>Status Kurang:</strong> {'< 80%'} dari kebutuhan</li>
                       <li><strong>Status Sesuai:</strong> 80% - 120% dari kebutuhan</li>
-                      <li><strong>Status Berlebih:</strong> {' > '} 120% dari kebutuhan</li>
+                      <li><strong>Status Berlebih:</strong> {'> 120%'} dari kebutuhan</li>
+                    </ul>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-orange-50 rounded">
+                    <p><strong>Distribusi Waktu Makan:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm mt-2">
+                      <li><strong>Sarapan:</strong> 25% dari kebutuhan harian</li>
+                      <li><strong>Makan Siang:</strong> 30% dari kebutuhan harian</li>
+                      <li><strong>Makan Malam:</strong> 25% dari kebutuhan harian</li>
+                      <li><strong>Camilan Pagi:</strong> 10% dari kebutuhan harian</li>
+                      <li><strong>Camilan Sore:</strong> 10% dari kebutuhan harian</li>
                     </ul>
                   </div>
 
@@ -335,13 +424,30 @@ const MenuComposer = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div className="space-y-2">
-            <Label>Nama Menu</Label>
-            <Input
-              value={menuName}
-              onChange={(e) => setMenuName(e.target.value)}
-              placeholder="Masukkan nama menu (contoh: Menu Sarapan, Menu Makan Siang)"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Nama Menu</Label>
+              <Input
+                value={menuName}
+                onChange={(e) => setMenuName(e.target.value)}
+                placeholder="Masukkan nama menu (contoh: Menu Sarapan, Menu Makan Siang)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Waktu Makan</Label>
+              <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih waktu makan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(mealTypes).map(([key, meal]) => (
+                    <SelectItem key={key} value={key}>
+                      {meal.name} ({meal.percentage}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -421,11 +527,17 @@ const MenuComposer = () => {
         </CardContent>
       </Card>
 
+      {/* Menu Results */}
       {menuItems.length > 0 && (
         <Card className="shadow-lg">
           <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white">
             <CardTitle>
               {menuName || 'Menu Makanan'} - Komposisi Menu
+              {selectedMealType && (
+                <span className="text-sm font-normal ml-2">
+                  ({mealTypes[selectedMealType as keyof typeof mealTypes]?.name})
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -481,204 +593,168 @@ const MenuComposer = () => {
               </Table>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Enhanced Nutrition Achievement vs Target with Tolerance */}
+            <div className="mt-6 grid grid-cols-1 gap-6">
+              {/* Daily Nutrition Achievement vs Target */}
               <div className="space-y-4">
-                <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi (dengan Toleransi)</h4>
+                <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi Harian (dengan Toleransi)</h4>
                 <div className="text-xs text-gray-600 mb-3">
                   Target berdasarkan: {targetAge <= 9 ? 
                     `Nilai individual ${targetGender === 'male' ? 'laki-laki' : 'perempuan'} umur ${targetAge} tahun` : 
                     `Nilai rata-rata umur ${targetAge} tahun`
                   }
                 </div>
-                <div className="space-y-3">
-                  {/* Energy */}
-                  <div className={`p-3 rounded-lg ${
-                    getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'bg-green-50' :
-                    getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'bg-red-50' : 'bg-orange-50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Energi:</span>
-                      <span className={`font-bold ${
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'text-red-700' : 'text-orange-700'
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { name: 'Energi', actual: totalNutrition.energy, target: targets.energy, range: toleranceRanges.energy, unit: 'kkal' },
+                    { name: 'Protein', actual: totalNutrition.protein, target: targets.protein, range: toleranceRanges.protein, unit: 'g' },
+                    { name: 'Lemak', actual: totalNutrition.fat, target: targets.fat.total, range: toleranceRanges.fat, unit: 'g' },
+                    { name: 'Karbohidrat', actual: totalNutrition.carbohydrate, target: targets.carbohydrate, range: toleranceRanges.carbohydrate, unit: 'g' }
+                  ].map(item => {
+                    const status = getNutritionStatus(item.actual, item.range);
+                    return (
+                      <div key={item.name} className={`p-3 rounded-lg ${
+                        status.color === 'green' ? 'bg-green-50' :
+                        status.color === 'red' ? 'bg-red-50' : 'bg-orange-50'
                       }`}>
-                        {totalNutrition.energy} / {targets.energy} kkal
-                      </span>
-                    </div>
-                    <div className="text-xs mb-2">
-                      Toleransi: {toleranceRanges.energy.min} - {toleranceRanges.energy.max} kkal
-                    </div>
-                    <div className={`w-full rounded-full h-2 ${
-                      getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'bg-green-200' :
-                      getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'bg-red-200' : 'bg-orange-200'
-                    }`}>
-                      <div 
-                        className={`h-2 rounded-full ${
-                          getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'bg-green-600' :
-                          getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'bg-red-600' : 'bg-orange-600'
-                        }`}
-                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.energy, targets.energy), 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className={`${
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'text-green-600' :
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {getAchievementPercentage(totalNutrition.energy, targets.energy)}% dari target
-                      </span>
-                      <span className={`font-medium ${
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        Status: {getNutritionStatus(totalNutrition.energy, toleranceRanges.energy).status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Protein */}
-                  <div className={`p-3 rounded-lg ${
-                    getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'bg-green-50' :
-                    getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'bg-red-50' : 'bg-orange-50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Protein:</span>
-                      <span className={`font-bold ${
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        {totalNutrition.protein} / {targets.protein} g
-                      </span>
-                    </div>
-                    <div className="text-xs mb-2">
-                      Toleransi: {toleranceRanges.protein.min} - {toleranceRanges.protein.max} g
-                    </div>
-                    <div className={`w-full rounded-full h-2 ${
-                      getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'bg-green-200' :
-                      getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'bg-red-200' : 'bg-orange-200'
-                    }`}>
-                      <div 
-                        className={`h-2 rounded-full ${
-                          getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'bg-green-600' :
-                          getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'bg-red-600' : 'bg-orange-600'
-                        }`}
-                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.protein, targets.protein), 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className={`${
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'text-green-600' :
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {getAchievementPercentage(totalNutrition.protein, targets.protein)}% dari target
-                      </span>
-                      <span className={`font-medium ${
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        Status: {getNutritionStatus(totalNutrition.protein, toleranceRanges.protein).status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Fat */}
-                  <div className={`p-3 rounded-lg ${
-                    getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'bg-green-50' :
-                    getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'bg-red-50' : 'bg-orange-50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Lemak:</span>
-                      <span className={`font-bold ${
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        {totalNutrition.fat} / {targets.fat.total} g
-                      </span>
-                    </div>
-                    <div className="text-xs mb-2">
-                      Toleransi: {toleranceRanges.fat.min} - {toleranceRanges.fat.max} g
-                    </div>
-                    <div className={`w-full rounded-full h-2 ${
-                      getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'bg-green-200' :
-                      getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'bg-red-200' : 'bg-orange-200'
-                    }`}>
-                      <div 
-                        className={`h-2 rounded-full ${
-                          getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'bg-green-600' :
-                          getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'bg-red-600' : 'bg-orange-600'
-                        }`}
-                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.fat, targets.fat.total), 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className={`${
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'text-green-600' :
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {getAchievementPercentage(totalNutrition.fat, targets.fat.total)}% dari target
-                      </span>
-                      <span className={`font-medium ${
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        Status: {getNutritionStatus(totalNutrition.fat, toleranceRanges.fat).status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Carbohydrate */}
-                  <div className={`p-3 rounded-lg ${
-                    getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'bg-green-50' :
-                    getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'bg-red-50' : 'bg-orange-50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium">Karbohidrat:</span>
-                      <span className={`font-bold ${
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        {totalNutrition.carbohydrate} / {targets.carbohydrate} g
-                      </span>
-                    </div>
-                    <div className="text-xs mb-2">
-                      Toleransi: {toleranceRanges.carbohydrate.min} - {toleranceRanges.carbohydrate.max} g
-                    </div>
-                    <div className={`w-full rounded-full h-2 ${
-                      getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'bg-green-200' :
-                      getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'bg-red-200' : 'bg-orange-200'
-                    }`}>
-                      <div 
-                        className={`h-2 rounded-full ${
-                          getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'bg-green-600' :
-                          getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'bg-red-600' : 'bg-orange-600'
-                        }`}
-                        style={{ width: `${Math.min(getAchievementPercentage(totalNutrition.carbohydrate, targets.carbohydrate), 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className={`${
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'text-green-600' :
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {getAchievementPercentage(totalNutrition.carbohydrate, targets.carbohydrate)}% dari target
-                      </span>
-                      <span className={`font-medium ${
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'green' ? 'text-green-700' :
-                        getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).color === 'red' ? 'text-red-700' : 'text-orange-700'
-                      }`}>
-                        Status: {getNutritionStatus(totalNutrition.carbohydrate, toleranceRanges.carbohydrate).status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium">{item.name}:</span>
+                          <span className={`font-bold ${
+                            status.color === 'green' ? 'text-green-700' :
+                            status.color === 'red' ? 'text-red-700' : 'text-orange-700'
+                          }`}>
+                            {item.actual} / {item.target} {item.unit}
+                          </span>
+                        </div>
+                        <div className="text-xs mb-2">
+                          Toleransi: {item.range.min} - {item.range.max} {item.unit}
+                        </div>
+                        <div className={`w-full rounded-full h-2 ${
+                          status.color === 'green' ? 'bg-green-200' :
+                          status.color === 'red' ? 'bg-red-200' : 'bg-orange-200'
+                        }`}>
+                          <div 
+                            className={`h-2 rounded-full ${
+                              status.color === 'green' ? 'bg-green-600' :
+                              status.color === 'red' ? 'bg-red-600' : 'bg-orange-600'
+                            }`}
+                            style={{ width: `${Math.min(getAchievementPercentage(item.actual, item.target), 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-xs mt-1">
+                          <span className={`${
+                            status.color === 'green' ? 'text-green-600' :
+                            status.color === 'red' ? 'text-red-600' : 'text-orange-600'
+                          }`}>
+                            {getAchievementPercentage(item.actual, item.target)}% dari target
+                          </span>
+                          <span className={`font-medium ${
+                            status.color === 'green' ? 'text-green-700' :
+                            status.color === 'red' ? 'text-red-700' : 'text-orange-700'
+                          }`}>
+                            Status: {status.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Meal-Specific Nutrition Achievement */}
+              {selectedMealType && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-lg">
+                    Pencapaian vs Target Gizi {mealTypes[selectedMealType as keyof typeof mealTypes]?.name} 
+                    <span className="text-sm font-normal"> ({mealTypes[selectedMealType as keyof typeof mealTypes]?.percentage}% dari kebutuhan harian)</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      { 
+                        name: 'Energi', 
+                        actual: totalNutrition.energy, 
+                        target: getMealTargets(selectedMealType).energy, 
+                        range: getMealToleranceRanges(selectedMealType).energy, 
+                        unit: 'kkal' 
+                      },
+                      { 
+                        name: 'Protein', 
+                        actual: totalNutrition.protein, 
+                        target: getMealTargets(selectedMealType).protein, 
+                        range: getMealToleranceRanges(selectedMealType).protein, 
+                        unit: 'g' 
+                      },
+                      { 
+                        name: 'Lemak', 
+                        actual: totalNutrition.fat, 
+                        target: getMealTargets(selectedMealType).fat, 
+                        range: getMealToleranceRanges(selectedMealType).fat, 
+                        unit: 'g' 
+                      },
+                      { 
+                        name: 'Karbohidrat', 
+                        actual: totalNutrition.carbohydrate, 
+                        target: getMealTargets(selectedMealType).carbohydrate, 
+                        range: getMealToleranceRanges(selectedMealType).carbohydrate, 
+                        unit: 'g' 
+                      }
+                    ].map(item => {
+                      const status = getNutritionStatus(item.actual, item.range);
+                      return (
+                        <div key={item.name} className={`p-3 rounded-lg ${
+                          status.color === 'green' ? 'bg-green-50' :
+                          status.color === 'red' ? 'bg-red-50' : 'bg-orange-50'
+                        }`}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium">{item.name}:</span>
+                            <span className={`font-bold ${
+                              status.color === 'green' ? 'text-green-700' :
+                              status.color === 'red' ? 'text-red-700' : 'text-orange-700'
+                            }`}>
+                              {item.actual} / {item.target} {item.unit}
+                            </span>
+                          </div>
+                          <div className="text-xs mb-2">
+                            Toleransi: {item.range.min} - {item.range.max} {item.unit}
+                          </div>
+                          <div className={`w-full rounded-full h-2 ${
+                            status.color === 'green' ? 'bg-green-200' :
+                            status.color === 'red' ? 'bg-red-200' : 'bg-orange-200'
+                          }`}>
+                            <div 
+                              className={`h-2 rounded-full ${
+                                status.color === 'green' ? 'bg-green-600' :
+                                status.color === 'red' ? 'bg-red-600' : 'bg-orange-600'
+                              }`}
+                              style={{ width: `${Math.min(getAchievementPercentage(item.actual, item.target), 100)}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs mt-1">
+                            <span className={`${
+                              status.color === 'green' ? 'text-green-600' :
+                              status.color === 'red' ? 'text-red-600' : 'text-orange-600'
+                            }`}>
+                              {getAchievementPercentage(item.actual, item.target)}% dari target
+                            </span>
+                            <span className={`font-medium ${
+                              status.color === 'green' ? 'text-green-700' :
+                              status.color === 'red' ? 'text-red-700' : 'text-orange-700'
+                            }`}>
+                              Status: {status.status.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Menu Information */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-lg">Komposisi Menu</h4>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p><strong>Nama Menu:</strong> {menuName || 'Tidak ada nama'}</p>
+                  <p><strong>Waktu Makan:</strong> {selectedMealType ? mealTypes[selectedMealType as keyof typeof mealTypes]?.name : 'Tidak dipilih'}</p>
                   <p><strong>Target:</strong> {
                     targetAge <= 9 ? 
                       `${targetGender === 'male' ? 'Laki-laki' : 'Perempuan'} ${targetAge} tahun (Individual)` : 
@@ -702,22 +778,45 @@ const MenuComposer = () => {
                     <strong>Status Kecukupan Gizi Keseluruhan:</strong>
                   </p>
                   <div className="text-sm space-y-1">
-                    {/* Overall nutrition status based on tolerance */}
-                    {[
-                      { name: 'Energi', actual: totalNutrition.energy, range: toleranceRanges.energy },
-                      { name: 'Protein', actual: totalNutrition.protein, range: toleranceRanges.protein },
-                      { name: 'Lemak', actual: totalNutrition.fat, range: toleranceRanges.fat },
-                      { name: 'Karbohidrat', actual: totalNutrition.carbohydrate, range: toleranceRanges.carbohydrate }
-                    ].map(item => (
-                      <div key={item.name} className={`${
-                        getNutritionStatus(item.actual, item.range).color === 'green' ? 'text-green-600' :
-                        getNutritionStatus(item.actual, item.range).color === 'red' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {getNutritionStatus(item.actual, item.range).status === 'sesuai' ? '✅' : 
-                         getNutritionStatus(item.actual, item.range).status === 'kurang' ? '⚠️' : '🔶'} 
-                        {item.name}: {getNutritionStatus(item.actual, item.range).status}
+                    <div className="mb-3">
+                      <strong>Kebutuhan Harian:</strong>
+                      {[
+                        { name: 'Energi', actual: totalNutrition.energy, range: toleranceRanges.energy },
+                        { name: 'Protein', actual: totalNutrition.protein, range: toleranceRanges.protein },
+                        { name: 'Lemak', actual: totalNutrition.fat, range: toleranceRanges.fat },
+                        { name: 'Karbohidrat', actual: totalNutrition.carbohydrate, range: toleranceRanges.carbohydrate }
+                      ].map(item => (
+                        <div key={item.name} className={`${
+                          getNutritionStatus(item.actual, item.range).color === 'green' ? 'text-green-600' :
+                          getNutritionStatus(item.actual, item.range).color === 'red' ? 'text-red-600' : 'text-orange-600'
+                        }`}>
+                          {getNutritionStatus(item.actual, item.range).status === 'sesuai' ? '✅' : 
+                           getNutritionStatus(item.actual, item.range).status === 'kurang' ? '⚠️' : '🔶'} 
+                          {item.name}: {getNutritionStatus(item.actual, item.range).status}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedMealType && (
+                      <div>
+                        <strong>Kebutuhan {mealTypes[selectedMealType as keyof typeof mealTypes]?.name}:</strong>
+                        {[
+                          { name: 'Energi', actual: totalNutrition.energy, range: getMealToleranceRanges(selectedMealType).energy },
+                          { name: 'Protein', actual: totalNutrition.protein, range: getMealToleranceRanges(selectedMealType).protein },
+                          { name: 'Lemak', actual: totalNutrition.fat, range: getMealToleranceRanges(selectedMealType).fat },
+                          { name: 'Karbohidrat', actual: totalNutrition.carbohydrate, range: getMealToleranceRanges(selectedMealType).carbohydrate }
+                        ].map(item => (
+                          <div key={item.name} className={`${
+                            getNutritionStatus(item.actual, item.range).color === 'green' ? 'text-green-600' :
+                            getNutritionStatus(item.actual, item.range).color === 'red' ? 'text-red-600' : 'text-orange-600'
+                          }`}>
+                            {getNutritionStatus(item.actual, item.range).status === 'sesuai' ? '✅' : 
+                             getNutritionStatus(item.actual, item.range).status === 'kurang' ? '⚠️' : '🔶'} 
+                            {item.name}: {getNutritionStatus(item.actual, item.range).status}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
