@@ -97,6 +97,11 @@ function getCategoryType(age: number): 'children' | 'adult' {
   return age <= 9 ? 'children' : 'adult';
 }
 
+// Fungsi untuk menentukan apakah menggunakan rata-rata atau nilai apa adanya
+function shouldUseAverage(age: number): boolean {
+  return age > 9; // Untuk umur > 9 tahun gunakan rata-rata
+}
+
 // Fungsi untuk menghitung rata-rata kebutuhan gizi berdasarkan kelompok umur
 export function calculateAverageNutrition(age: number): NutritionNeeds {
   const ageCategory = getAgeCategory(age);
@@ -143,6 +148,27 @@ export function calculateAverageNutrition(age: number): NutritionNeeds {
     water: averageData.water,
     category: `Rata-rata ${age} tahun (${ageCategory.replace(/years|months/, ' tahun').replace('-', '-')})`
   };
+}
+
+// Fungsi baru untuk menghitung kebutuhan gizi menu (rata-rata atau individual)
+export function calculateMenuNutritionNeeds(age: number, gender?: string): NutritionNeeds {
+  if (shouldUseAverage(age)) {
+    // Untuk umur > 9 tahun, gunakan rata-rata
+    return calculateAverageNutrition(age);
+  } else {
+    // Untuk bayi/anak-anak (≤ 9 tahun), gunakan nilai apa adanya berdasarkan gender
+    // Jika gender tidak disediakan, gunakan rata-rata
+    if (!gender) {
+      return calculateAverageNutrition(age);
+    }
+    
+    return calculateNutritionNeeds({
+      gender: gender,
+      weight: 20, // Default weight for children
+      height: 110, // Default height for children
+      age: age
+    });
+  }
 }
 
 // Fungsi untuk menghitung kontribusi energi per waktu makan

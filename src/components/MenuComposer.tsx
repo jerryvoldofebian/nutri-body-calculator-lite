@@ -21,7 +21,7 @@ import {
   calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
-import { calculateNutritionNeeds } from "../utils/nutritionCalculator";
+import { calculateMenuNutritionNeeds } from "../utils/nutritionCalculator";
 
 interface MenuNutrition {
   energy: number;
@@ -63,14 +63,15 @@ const MenuComposer = () => {
     fruit: { name: 'Buah-buahan', foods: fruitFoods }
   };
 
-  // Get nutrition targets for specific age and gender
+  // Get nutrition targets for specific age and gender using new logic
   const getNutritionTargets = () => {
-    return calculateNutritionNeeds({
-      gender: targetGender,
-      weight: 60, // Default weight for calculation
-      height: 165, // Default height for calculation
-      age: targetAge
-    });
+    // Untuk bayi/anak-anak (≤ 9 tahun), gunakan gender
+    // Untuk dewasa (> 9 tahun), gunakan rata-rata
+    if (targetAge <= 9) {
+      return calculateMenuNutritionNeeds(targetAge, targetGender);
+    } else {
+      return calculateMenuNutritionNeeds(targetAge);
+    }
   };
 
   const targets = getNutritionTargets();
@@ -167,7 +168,11 @@ const MenuComposer = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Jenis Kelamin Target</Label>
-              <Select value={targetGender} onValueChange={setTargetGender}>
+              <Select 
+                value={targetGender} 
+                onValueChange={setTargetGender}
+                disabled={targetAge > 9}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -176,6 +181,11 @@ const MenuComposer = () => {
                   <SelectItem value="female">Perempuan</SelectItem>
                 </SelectContent>
               </Select>
+              {targetAge > 9 && (
+                <p className="text-xs text-gray-500">
+                  * Untuk umur > 9 tahun menggunakan rata-rata laki-laki dan perempuan
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Umur Target (tahun)</Label>
@@ -190,12 +200,22 @@ const MenuComposer = () => {
           </div>
           
           <div className="mt-4 p-4 bg-purple-50 rounded-lg">
-            <h4 className="font-semibold text-purple-800 mb-2">Target Kebutuhan Gizi Harian:</h4>
+            <h4 className="font-semibold text-purple-800 mb-2">
+              Target Kebutuhan Gizi Harian:
+              {targetAge <= 9 ? (
+                <span className="text-sm font-normal"> (Nilai Individual {targetGender === 'male' ? 'Laki-laki' : 'Perempuan'})</span>
+              ) : (
+                <span className="text-sm font-normal"> (Nilai Rata-rata)</span>
+              )}
+            </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
               <div><strong>Energi:</strong> {targets.energy} kkal</div>
               <div><strong>Protein:</strong> {targets.protein} g</div>
               <div><strong>Lemak:</strong> {targets.fat.total} g</div>
               <div><strong>Karbohidrat:</strong> {targets.carbohydrate} g</div>
+            </div>
+            <div className="mt-2 text-xs text-purple-600">
+              <strong>Kategori:</strong> {targets.category}
             </div>
           </div>
         </CardContent>
@@ -225,10 +245,19 @@ const MenuComposer = () => {
                 <div className="space-y-3">
                   <p><strong>Rumus Perhitungan Gizi:</strong></p>
                   <p className="bg-blue-50 p-3 rounded">
-                    <code>(Berat Aktual Makanan ÷ Berat Standar Makanan Penukar) × Nilai Zat Gizi Standar</code>
+                    <code>(Berat Aktual Makanan Penukar ÷ Berat Standar Makanan Penukar) × Nilai Zat Gizi Standar</code>
                   </p>
                   <p><strong>Contoh:</strong></p>
                   <p>Bihun 10 gram → Energi: (10 ÷ 50) × 175 kkal = 35 kkal</p>
+                  
+                  <div className="mt-4 p-3 bg-yellow-50 rounded">
+                    <p><strong>Perhitungan Target Kebutuhan Gizi:</strong></p>
+                    <ul className="list-disc list-inside space-y-1 text-sm mt-2">
+                      <li><strong>Bayi/Anak (≤ 9 tahun):</strong> Menggunakan nilai kebutuhan gizi individual sesuai jenis kelamin</li>
+                      <li><strong>Remaja/Dewasa (> 9 tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
+                    </ul>
+                  </div>
+
                   <p><strong>Standar Gizi per Kategori:</strong></p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li><strong>Karbohidrat (100g nasi):</strong> 175 kkal, 4g protein, 40g karbohidrat</li>
@@ -407,6 +436,12 @@ const MenuComposer = () => {
               {/* Nutrition Achievement vs Target */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi</h4>
+                <div className="text-xs text-gray-600 mb-3">
+                  Target berdasarkan: {targetAge <= 9 ? 
+                    `Nilai individual ${targetGender === 'male' ? 'laki-laki' : 'perempuan'} umur ${targetAge} tahun` : 
+                    `Nilai rata-rata umur ${targetAge} tahun`
+                  }
+                </div>
                 <div className="space-y-3">
                   <div className="p-3 bg-yellow-50 rounded-lg">
                     <div className="flex justify-between items-center mb-1">
@@ -487,7 +522,11 @@ const MenuComposer = () => {
                 <h4 className="font-semibold text-lg">Komposisi Menu</h4>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p><strong>Nama Menu:</strong> {menuName || 'Tidak ada nama'}</p>
-                  <p><strong>Target:</strong> {targetGender === 'male' ? 'Laki-laki' : 'Perempuan'} {targetAge} tahun</p>
+                  <p><strong>Target:</strong> {
+                    targetAge <= 9 ? 
+                      `${targetGender === 'male' ? 'Laki-laki' : 'Perempuan'} ${targetAge} tahun (Individual)` : 
+                      `${targetAge} tahun (Rata-rata)`
+                  }</p>
                   <p><strong>Jumlah Item:</strong> {menuItems.length} makanan</p>
                   <p><strong>Total Berat:</strong> {menuItems.reduce((total, item) => total + item.actualWeight, 0)} gram</p>
                 </div>
