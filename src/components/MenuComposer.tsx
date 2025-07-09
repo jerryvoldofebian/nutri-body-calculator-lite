@@ -21,7 +21,7 @@ import {
   calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
-import { calculateMenuNutritionNeeds, calculateMealContribution, calculateAgeRangeNutrition } from "../utils/nutritionCalculator";
+import { calculateMealContribution, calculateCustomAgeRangeNutrition } from "../utils/nutritionCalculator";
 
 interface MenuNutrition {
   energy: number;
@@ -51,8 +51,9 @@ const MenuComposer = () => {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [actualWeight, setActualWeight] = useState<number>(0);
   
-  // Age range targeting instead of specific age
-  const [targetAgeRange, setTargetAgeRange] = useState<string>('19-29years');
+  // Custom age range targeting
+  const [startAge, setStartAge] = useState<number>(7);
+  const [endAge, setEndAge] = useState<number>(12);
   const [showCalculationInfo, setShowCalculationInfo] = useState(false);
   
   // Meal type selection
@@ -76,26 +77,9 @@ const MenuComposer = () => {
     dinner: { name: 'Makan Malam', percentage: 25 }
   };
 
-  // Age range options
-  const ageRanges = {
-    '0-5months': { name: '0-5 bulan', displayName: '0-5 bulan' },
-    '6-11months': { name: '6-11 bulan', displayName: '6-11 bulan' },
-    '1-3years': { name: '1-3 tahun', displayName: '1-3 tahun' },
-    '4-6years': { name: '4-6 tahun', displayName: '4-6 tahun' },
-    '7-9years': { name: '7-9 tahun', displayName: '7-9 tahun' },
-    '10-12years': { name: '10-12 tahun', displayName: '10-12 tahun' },
-    '13-15years': { name: '13-15 tahun', displayName: '13-15 tahun' },
-    '16-18years': { name: '16-18 tahun', displayName: '16-18 tahun' },
-    '19-29years': { name: '19-29 tahun', displayName: '19-29 tahun' },
-    '30-49years': { name: '30-49 tahun', displayName: '30-49 tahun' },
-    '50-64years': { name: '50-64 tahun', displayName: '50-64 tahun' },
-    '65-80years': { name: '65-80 tahun', displayName: '65-80 tahun' },
-    '80+years': { name: '80+ tahun', displayName: '80+ tahun' }
-  };
-
-  // Get nutrition targets for selected age range
+  // Get nutrition targets for custom age range
   const getNutritionTargets = () => {
-    return calculateAgeRangeNutrition(targetAgeRange);
+    return calculateCustomAgeRangeNutrition(startAge, endAge);
   };
 
   const targets = getNutritionTargets();
@@ -228,37 +212,46 @@ const MenuComposer = () => {
 
   return (
     <div className="space-y-6">
-      {/* Age Range Target Selection */}
+      {/* Custom Age Range Target Selection */}
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Target Kelompok Umur
+            Target Rentang Umur Kustom
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Rentang Umur Target</Label>
-              <Select value={targetAgeRange} onValueChange={setTargetAgeRange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ageRanges).map(([key, range]) => (
-                    <SelectItem key={key} value={key}>
-                      {range.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Umur Mulai (tahun)</Label>
+                <Input
+                  type="number"
+                  value={startAge}
+                  onChange={(e) => setStartAge(Number(e.target.value))}
+                  min="0"
+                  max="100"
+                  placeholder="Contoh: 7"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Umur Akhir (tahun)</Label>
+                <Input
+                  type="number"
+                  value={endAge}
+                  onChange={(e) => setEndAge(Number(e.target.value))}
+                  min="0"
+                  max="100"
+                  placeholder="Contoh: 12"
+                />
+              </div>
             </div>
           </div>
           
           <div className="mt-4 p-4 bg-purple-50 rounded-lg">
             <h4 className="font-semibold text-purple-800 mb-2">
               Target Kebutuhan Gizi Harian:
-              <span className="text-sm font-normal"> (Rata-rata Kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName})</span>
+              <span className="text-sm font-normal"> (Rata-rata Rentang Umur {startAge}-{endAge} tahun)</span>
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
               <div><strong>Energi:</strong> {targets.energy} kkal</div>
@@ -358,10 +351,12 @@ const MenuComposer = () => {
                   <p>Bihun 10 gram → Energi: (10 ÷ 50) × 175 kkal = 35 kkal</p>
                   
                   <div className="mt-4 p-3 bg-yellow-50 rounded">
-                    <p><strong>Perhitungan Target Kebutuhan Gizi:</strong></p>
+                    <p><strong>Perhitungan Target Kebutuhan Gizi Rentang Umur Kustom:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-sm mt-2">
-                      <li><strong>Rentang Umur:</strong> Menggunakan rata-rata kebutuhan gizi dari seluruh kelompok umur dalam rentang yang dipilih</li>
-                      <li><strong>Perhitungan Rata-rata:</strong> Menghitung rata-rata nilai gizi laki-laki dan perempuan untuk setiap kelompok umur dalam rentang, kemudian merata-ratakan hasilnya</li>
+                      <li><strong>Rentang Umur Kustom:</strong> Menghitung rata-rata kebutuhan gizi dari semua kelompok umur yang tercakup dalam rentang yang ditentukan</li>
+                      <li><strong>Contoh:</strong> Rentang 7-12 tahun mencakup kelompok 7-9 tahun dan 10-12 tahun</li>
+                      <li><strong>Perhitungan:</strong> Rata-rata nilai gizi laki-laki dan perempuan untuk setiap kelompok, kemudian rata-rata antar kelompok</li>
+                      <li><strong>Hasil:</strong> Target gizi yang mewakili kebutuhan rata-rata untuk seluruh rentang umur yang dipilih</li>
                     </ul>
                   </div>
 
@@ -588,7 +583,7 @@ const MenuComposer = () => {
               <div className="space-y-4">
                 <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi Harian (dengan Toleransi)</h4>
                 <div className="text-xs text-gray-600 mb-3">
-                  Target berdasarkan: Rata-rata kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName}
+                  Target berdasarkan: Rata-rata rentang umur {startAge}-{endAge} tahun
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
@@ -742,7 +737,7 @@ const MenuComposer = () => {
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p><strong>Nama Menu:</strong> {menuName || 'Tidak ada nama'}</p>
                   <p><strong>Waktu Makan:</strong> {selectedMealType ? mealTypes[selectedMealType as keyof typeof mealTypes]?.name : 'Tidak dipilih'}</p>
-                  <p><strong>Target:</strong> Kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName} (Rata-rata)</p>
+                  <p><strong>Target:</strong> Rentang umur {startAge}-{endAge} tahun (Rata-rata)</p>
                   <p><strong>Jumlah Item:</strong> {menuItems.length} makanan</p>
                   <p><strong>Total Berat:</strong> {menuItems.reduce((total, item) => total + item.actualWeight, 0)} gram</p>
                 </div>

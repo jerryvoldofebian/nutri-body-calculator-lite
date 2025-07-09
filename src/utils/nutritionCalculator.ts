@@ -311,3 +311,127 @@ export function calculateAgeRangeNutrition(ageRange: string): NutritionNeeds {
     category: `Rata-rata kelompok ${ageDisplayNames[ageRange] || ageRange}`
   };
 }
+
+// Fungsi baru untuk menghitung kebutuhan gizi berdasarkan rentang umur kustom
+export function calculateCustomAgeRangeNutrition(startAge: number, endAge: number): NutritionNeeds {
+  // Validasi input
+  if (startAge > endAge) {
+    [startAge, endAge] = [endAge, startAge]; // Tukar jika terbalik
+  }
+
+  // Fungsi untuk mendapatkan semua kelompok umur yang tercakup dalam rentang
+  const getAgeGroupsInRange = (start: number, end: number): string[] => {
+    const allAgeGroups = [
+      { key: '0-5months', minAge: 0, maxAge: 0.5 },
+      { key: '6-11months', minAge: 0.5, maxAge: 1 },
+      { key: '1-3years', minAge: 1, maxAge: 3 },
+      { key: '4-6years', minAge: 4, maxAge: 6 },
+      { key: '7-9years', minAge: 7, maxAge: 9 },
+      { key: '10-12years', minAge: 10, maxAge: 12 },
+      { key: '13-15years', minAge: 13, maxAge: 15 },
+      { key: '16-18years', minAge: 16, maxAge: 18 },
+      { key: '19-29years', minAge: 19, maxAge: 29 },
+      { key: '30-49years', minAge: 30, maxAge: 49 },
+      { key: '50-64years', minAge: 50, maxAge: 64 },
+      { key: '65-80years', minAge: 65, maxAge: 80 },
+      { key: '80+years', minAge: 80, maxAge: 100 }
+    ];
+
+    return allAgeGroups
+      .filter(group => {
+        // Kelompok umur tercakup jika ada overlap dengan rentang yang diminta
+        return group.maxAge >= start && group.minAge <= end;
+      })
+      .map(group => group.key);
+  };
+
+  const relevantAgeGroups = getAgeGroupsInRange(startAge, endAge);
+  
+  if (relevantAgeGroups.length === 0) {
+    // Fallback jika tidak ada kelompok yang cocok
+    return {
+      energy: 2000,
+      protein: 50,
+      fat: { total: 65, omega3: 1.2, omega6: 12 },
+      carbohydrate: 300,
+      fiber: 28,
+      water: 2000,
+      category: `Rata-rata rentang umur ${startAge}-${endAge} tahun (fallback)`
+    };
+  }
+
+  // Kumpulkan semua data gizi dari kelompok yang relevan
+  const allNutritionData: NutritionDataItem[] = [];
+  
+  relevantAgeGroups.forEach(ageGroup => {
+    // Cek di children dan adult untuk male dan female
+    const maleChildData = nutritionData.male.children[ageGroup];
+    const femaleChildData = nutritionData.female.children[ageGroup];
+    const maleAdultData = nutritionData.male.adult[ageGroup];
+    const femaleAdultData = nutritionData.female.adult[ageGroup];
+
+    if (maleChildData) allNutritionData.push(maleChildData);
+    if (femaleChildData) allNutritionData.push(femaleChildData);
+    if (maleAdultData) allNutritionData.push(maleAdultData);
+    if (femaleAdultData) allNutritionData.push(femaleAdultData);
+  });
+
+  if (allNutritionData.length === 0) {
+    // Fallback jika tidak ada data
+    return {
+      energy: 2000,
+      protein: 50,
+      fat: { total: 65, omega3: 1.2, omega6: 12 },
+      carbohydrate: 300,
+      fiber: 28,
+      water: 2000,
+      category: `Rata-rata rentang umur ${startAge}-${endAge} tahun (no data)`
+    };
+  }
+
+  // Hitung rata-rata dari semua data yang terkumpul
+  const averageData = {
+    energy: Math.round(allNutritionData.reduce((sum, data) => sum + data.energy, 0) / allNutritionData.length),
+    protein: Math.round(allNutritionData.reduce((sum, data) => sum + data.protein, 0) / allNutritionData.length),
+    fatTotal: Math.round(allNutritionData.reduce((sum, data) => sum + data.fatTotal, 0) / allNutritionData.length),
+    omega3: Math.round((allNutritionData.reduce((sum, data) => sum + data.omega3, 0) / allNutritionData.length) * 10) / 10,
+    omega6: Math.round((allNutritionData.reduce((sum, data) => sum + data.omega6, 0) / allNutritionData.length) * 10) / 10,
+    carb: Math.round(allNutritionData.reduce((sum, data) => sum + data.carb, 0) / allNutritionData.length),
+    fiber: Math.round(allNutritionData.reduce((sum, data) => sum + data.fiber, 0) / allNutritionData.length),
+    water: Math.round(allNutritionData.reduce((sum, data) => sum + data.water, 0) / allNutritionData.length)
+  };
+
+  // Buat deskripsi kelompok yang tercakup
+  const groupDescriptions = relevantAgeGroups.map(group => {
+    const ageDisplayNames: Record<string, string> = {
+      '0-5months': '0-5 bulan',
+      '6-11months': '6-11 bulan',
+      '1-3years': '1-3 tahun',
+      '4-6years': '4-6 tahun',
+      '7-9years': '7-9 tahun',
+      '10-12years': '10-12 tahun',
+      '13-15years': '13-15 tahun',
+      '16-18years': '16-18 tahun',
+      '19-29years': '19-29 tahun',
+      '30-49years': '30-49 tahun',
+      '50-64years': '50-64 tahun',
+      '65-80years': '65-80 tahun',
+      '80+years': '80+ tahun'
+    };
+    return ageDisplayNames[group] || group;
+  });
+
+  return {
+    energy: averageData.energy,
+    protein: averageData.protein,
+    fat: {
+      total: averageData.fatTotal,
+      omega3: averageData.omega3,
+      omega6: averageData.omega6
+    },
+    carbohydrate: averageData.carb,
+    fiber: averageData.fiber,
+    water: averageData.water,
+    category: `Rata-rata rentang umur ${startAge}-${endAge} tahun (mencakup: ${groupDescriptions.join(', ')})`
+  };
+}
