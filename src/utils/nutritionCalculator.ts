@@ -246,3 +246,68 @@ export function calculateNutritionNeeds(userData: UserData): NutritionNeeds {
     category: `${gender === 'male' ? 'Laki-laki' : 'Perempuan'} ${age} tahun (${ageCategory.replace(/years|months/, ' tahun').replace('-', '-')})`
   };
 }
+
+// Fungsi untuk menghitung rata-rata kebutuhan gizi berdasarkan rentang umur
+export function calculateAgeRangeNutrition(ageRange: string): NutritionNeeds {
+  const ageRangeData = nutritionData.male.children[ageRange] || nutritionData.male.adult[ageRange];
+  const femaleAgeRangeData = nutritionData.female.children[ageRange] || nutritionData.female.adult[ageRange];
+  
+  // Default fallback data
+  const defaultData: NutritionDataItem = {
+    energy: 2650,
+    protein: 65,
+    fatTotal: 75,
+    omega3: 1.6,
+    omega6: 17,
+    carb: 430,
+    fiber: 37,
+    water: 2500
+  };
+
+  // Get data for both genders or use default
+  const maleData = ageRangeData || defaultData;
+  const femaleData = femaleAgeRangeData || defaultData;
+  
+  // Calculate averages between male and female
+  const averageData = {
+    energy: Math.round((maleData.energy + femaleData.energy) / 2),
+    protein: Math.round((maleData.protein + femaleData.protein) / 2),
+    fatTotal: Math.round((maleData.fatTotal + femaleData.fatTotal) / 2),
+    omega3: Math.round((maleData.omega3 + femaleData.omega3) / 2 * 10) / 10,
+    omega6: Math.round((maleData.omega6 + femaleData.omega6) / 2 * 10) / 10,
+    carb: Math.round((maleData.carb + femaleData.carb) / 2),
+    fiber: Math.round((maleData.fiber + femaleData.fiber) / 2),
+    water: Math.round((maleData.water + femaleData.water) / 2)
+  };
+
+  // Convert age range key to display name
+  const ageDisplayNames: Record<string, string> = {
+    '0-5months': '0-5 bulan',
+    '6-11months': '6-11 bulan',
+    '1-3years': '1-3 tahun',
+    '4-6years': '4-6 tahun',
+    '7-9years': '7-9 tahun',
+    '10-12years': '10-12 tahun',
+    '13-15years': '13-15 tahun',
+    '16-18years': '16-18 tahun',
+    '19-29years': '19-29 tahun',
+    '30-49years': '30-49 tahun',
+    '50-64years': '50-64 tahun',
+    '65-80years': '65-80 tahun',
+    '80+years': '80+ tahun'
+  };
+
+  return {
+    energy: averageData.energy,
+    protein: averageData.protein,
+    fat: {
+      total: averageData.fatTotal,
+      omega3: averageData.omega3,
+      omega6: averageData.omega6
+    },
+    carbohydrate: averageData.carb,
+    fiber: averageData.fiber,
+    water: averageData.water,
+    category: `Rata-rata kelompok ${ageDisplayNames[ageRange] || ageRange}`
+  };
+}

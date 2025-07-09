@@ -21,7 +21,7 @@ import {
   calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
-import { calculateMenuNutritionNeeds, calculateMealContribution } from "../utils/nutritionCalculator";
+import { calculateMenuNutritionNeeds, calculateMealContribution, calculateAgeRangeNutrition } from "../utils/nutritionCalculator";
 
 interface MenuNutrition {
   energy: number;
@@ -51,9 +51,8 @@ const MenuComposer = () => {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [actualWeight, setActualWeight] = useState<number>(0);
   
-  // Age-specific targeting
-  const [targetAge, setTargetAge] = useState<number>(25);
-  const [targetGender, setTargetGender] = useState<string>('male');
+  // Age range targeting instead of specific age
+  const [targetAgeRange, setTargetAgeRange] = useState<string>('19-29years');
   const [showCalculationInfo, setShowCalculationInfo] = useState(false);
   
   // Meal type selection
@@ -77,15 +76,26 @@ const MenuComposer = () => {
     dinner: { name: 'Makan Malam', percentage: 25 }
   };
 
-  // Get nutrition targets for specific age and gender using new logic
+  // Age range options
+  const ageRanges = {
+    '0-5months': { name: '0-5 bulan', displayName: '0-5 bulan' },
+    '6-11months': { name: '6-11 bulan', displayName: '6-11 bulan' },
+    '1-3years': { name: '1-3 tahun', displayName: '1-3 tahun' },
+    '4-6years': { name: '4-6 tahun', displayName: '4-6 tahun' },
+    '7-9years': { name: '7-9 tahun', displayName: '7-9 tahun' },
+    '10-12years': { name: '10-12 tahun', displayName: '10-12 tahun' },
+    '13-15years': { name: '13-15 tahun', displayName: '13-15 tahun' },
+    '16-18years': { name: '16-18 tahun', displayName: '16-18 tahun' },
+    '19-29years': { name: '19-29 tahun', displayName: '19-29 tahun' },
+    '30-49years': { name: '30-49 tahun', displayName: '30-49 tahun' },
+    '50-64years': { name: '50-64 tahun', displayName: '50-64 tahun' },
+    '65-80years': { name: '65-80 tahun', displayName: '65-80 tahun' },
+    '80+years': { name: '80+ tahun', displayName: '80+ tahun' }
+  };
+
+  // Get nutrition targets for selected age range
   const getNutritionTargets = () => {
-    // Untuk bayi/anak-anak (≤ 9 tahun), gunakan gender
-    // Untuk dewasa (> 9 tahun), gunakan rata-rata
-    if (targetAge <= 9) {
-      return calculateMenuNutritionNeeds(targetAge, targetGender);
-    } else {
-      return calculateMenuNutritionNeeds(targetAge);
-    }
+    return calculateAgeRangeNutrition(targetAgeRange);
   };
 
   const targets = getNutritionTargets();
@@ -218,7 +228,7 @@ const MenuComposer = () => {
 
   return (
     <div className="space-y-6">
-      {/* Age Target Selection */}
+      {/* Age Range Target Selection */}
       <Card className="shadow-lg">
         <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
           <CardTitle className="flex items-center gap-2">
@@ -227,48 +237,28 @@ const MenuComposer = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Jenis Kelamin Target</Label>
-              <Select 
-                value={targetGender} 
-                onValueChange={setTargetGender}
-                disabled={targetAge > 9}
-              >
+              <Label>Rentang Umur Target</Label>
+              <Select value={targetAgeRange} onValueChange={setTargetAgeRange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="male">Laki-laki</SelectItem>
-                  <SelectItem value="female">Perempuan</SelectItem>
+                  {Object.entries(ageRanges).map(([key, range]) => (
+                    <SelectItem key={key} value={key}>
+                      {range.displayName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {targetAge > 9 && (
-                <p className="text-xs text-gray-500">
-                  * Untuk umur {targetAge > 9 ? '> 9' : '≤ 9'} tahun menggunakan rata-rata laki-laki dan perempuan
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Umur Target (tahun)</Label>
-              <Input
-                type="number"
-                value={targetAge}
-                onChange={(e) => setTargetAge(Number(e.target.value))}
-                min="0"
-                max="100"
-              />
             </div>
           </div>
           
           <div className="mt-4 p-4 bg-purple-50 rounded-lg">
             <h4 className="font-semibold text-purple-800 mb-2">
               Target Kebutuhan Gizi Harian:
-              {targetAge <= 9 ? (
-                <span className="text-sm font-normal"> (Nilai Individual {targetGender === 'male' ? 'Laki-laki' : 'Perempuan'})</span>
-              ) : (
-                <span className="text-sm font-normal"> (Nilai Rata-rata)</span>
-              )}
+              <span className="text-sm font-normal"> (Rata-rata Kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName})</span>
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
               <div><strong>Energi:</strong> {targets.energy} kkal</div>
@@ -370,8 +360,8 @@ const MenuComposer = () => {
                   <div className="mt-4 p-3 bg-yellow-50 rounded">
                     <p><strong>Perhitungan Target Kebutuhan Gizi:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-sm mt-2">
-                      <li><strong>Bayi/Anak (≤ 9 tahun):</strong> Menggunakan nilai kebutuhan gizi individual sesuai jenis kelamin</li>
-                      <li><strong>Remaja/Dewasa ({targetAge > 9 ? '> 9' : '≤ 9'} tahun):</strong> Menggunakan nilai rata-rata kebutuhan gizi laki-laki dan perempuan</li>
+                      <li><strong>Rentang Umur:</strong> Menggunakan rata-rata kebutuhan gizi dari seluruh kelompok umur dalam rentang yang dipilih</li>
+                      <li><strong>Perhitungan Rata-rata:</strong> Menghitung rata-rata nilai gizi laki-laki dan perempuan untuk setiap kelompok umur dalam rentang, kemudian merata-ratakan hasilnya</li>
                     </ul>
                   </div>
 
@@ -598,10 +588,7 @@ const MenuComposer = () => {
               <div className="space-y-4">
                 <h4 className="font-semibold text-lg">Pencapaian vs Target Gizi Harian (dengan Toleransi)</h4>
                 <div className="text-xs text-gray-600 mb-3">
-                  Target berdasarkan: {targetAge <= 9 ? 
-                    `Nilai individual ${targetGender === 'male' ? 'laki-laki' : 'perempuan'} umur ${targetAge} tahun` : 
-                    `Nilai rata-rata umur ${targetAge} tahun`
-                  }
+                  Target berdasarkan: Rata-rata kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
@@ -755,11 +742,7 @@ const MenuComposer = () => {
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p><strong>Nama Menu:</strong> {menuName || 'Tidak ada nama'}</p>
                   <p><strong>Waktu Makan:</strong> {selectedMealType ? mealTypes[selectedMealType as keyof typeof mealTypes]?.name : 'Tidak dipilih'}</p>
-                  <p><strong>Target:</strong> {
-                    targetAge <= 9 ? 
-                      `${targetGender === 'male' ? 'Laki-laki' : 'Perempuan'} ${targetAge} tahun (Individual)` : 
-                      `${targetAge} tahun (Rata-rata)`
-                  }</p>
+                  <p><strong>Target:</strong> Kelompok {ageRanges[targetAgeRange as keyof typeof ageRanges]?.displayName} (Rata-rata)</p>
                   <p><strong>Jumlah Item:</strong> {menuItems.length} makanan</p>
                   <p><strong>Total Berat:</strong> {menuItems.reduce((total, item) => total + item.actualWeight, 0)} gram</p>
                 </div>
