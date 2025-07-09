@@ -18,7 +18,6 @@ import {
   vegetableGroupCFoods,
   fruitFoods,
   nutritionStandards,
-  calculateNutritionPerServing,
   FoodItem
 } from "../utils/foodNutritionData";
 import { calculateMealContribution, calculateCustomAgeRangeNutrition } from "../utils/nutritionCalculator";
@@ -43,6 +42,24 @@ interface ToleranceRange {
   min: number;
   max: number;
 }
+
+// Fungsi perhitungan gizi berdasarkan konsep pangan penukar
+const calculateNutritionPerServing = (
+  actualWeight: number, 
+  standardWeight: number, 
+  nutritionStandard: any
+): MenuNutrition => {
+  // Rumus: (Berat Aktual Pangan Penukar ÷ Berat Standar Pangan Penukar) × Gizi Pangan Sumber
+  const ratio = actualWeight / standardWeight;
+  
+  return {
+    energy: Math.round(ratio * nutritionStandard.energy),
+    protein: Math.round(ratio * nutritionStandard.protein * 10) / 10,
+    fat: Math.round(ratio * nutritionStandard.fat * 10) / 10,
+    carbohydrate: Math.round(ratio * nutritionStandard.carbohydrate * 10) / 10,
+    fiber: Math.round(ratio * nutritionStandard.fiber * 10) / 10
+  };
+};
 
 const MenuComposer = () => {
   const [menuName, setMenuName] = useState('');
@@ -144,10 +161,11 @@ const MenuComposer = () => {
       return;
     }
 
+    // Menggunakan perhitungan pangan penukar yang sudah direvisi
     const calculatedNutrition = calculateNutritionPerServing(
       actualWeight, 
-      nutritionStandard.standardWeight, 
-      nutritionStandard
+      selectedFood.weight, // Berat standar pangan penukar
+      nutritionStandard    // Gizi pangan sumber
     );
 
     const newMenuItem: MenuItem = {
@@ -343,12 +361,19 @@ const MenuComposer = () => {
               <Info className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-3">
-                  <p><strong>Rumus Perhitungan Gizi:</strong></p>
+                  <p><strong>Rumus Perhitungan Gizi dengan Konsep Pangan Penukar:</strong></p>
                   <p className="bg-blue-50 p-3 rounded">
-                    <code>(Berat Aktual Makanan Penukar ÷ Berat Standar Makanan Penukar) × Nilai Zat Gizi Standar</code>
+                    <code>(Berat Aktual Pangan Penukar ÷ Berat Standar Pangan Penukar) × Gizi Pangan Sumber</code>
                   </p>
-                  <p><strong>Contoh:</strong></p>
-                  <p>Bihun 10 gram → Energi: (10 ÷ 50) × 175 kkal = 35 kkal</p>
+                  <p><strong>Penjelasan Konsep Pangan Penukar:</strong></p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Pangan Penukar:</strong> Pangan yang berbeda jenisnya tetapi memiliki nilai gizi yang setara</li>
+                    <li><strong>Berat Standar Pangan Penukar:</strong> Berat pangan penukar yang gizinya setara dengan pangan sumber</li>
+                    <li><strong>Contoh:</strong> 200g mie basah gizinya setara dengan 100g nasi (sebagai pangan sumber)</li>
+                    <li><strong>Perhitungan:</strong> Jika menggunakan 150g mie basah → (150 ÷ 200) × nilai gizi nasi</li>
+                  </ul>
+                  <p><strong>Contoh Perhitungan:</strong></p>
+                  <p>Mie basah 150 gram → Energi: (150 ÷ 200) × 175 kkal = 131 kkal</p>
                   
                   <div className="mt-4 p-3 bg-yellow-50 rounded">
                     <p><strong>Perhitungan Target Kebutuhan Gizi Rentang Umur Kustom:</strong></p>
@@ -381,7 +406,7 @@ const MenuComposer = () => {
                     </ul>
                   </div>
 
-                  <p><strong>Standar Gizi per Kategori:</strong></p>
+                  <p><strong>Standar Gizi per Kategori (Pangan Sumber):</strong></p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li><strong>Karbohidrat (100g nasi):</strong> 175 kkal, 4g protein, 40g karbohidrat</li>
                     <li><strong>Protein Nabati (50g tempe):</strong> 80 kkal, 6g protein, 3g lemak, 8g karbohidrat</li>
@@ -488,7 +513,10 @@ const MenuComposer = () => {
           {selectedFood && (
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-blue-700">
-                <strong>{selectedFood.name}</strong> - {selectedFood.portion} (Standar: {selectedFood.weight}g)
+                <strong>{selectedFood.name}</strong> - {selectedFood.portion} (Berat Standar Penukar: {selectedFood.weight}g)
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Berat standar ini adalah berat pangan penukar yang gizinya setara dengan pangan sumber
               </p>
             </div>
           )}
