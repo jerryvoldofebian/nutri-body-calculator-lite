@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Scale, Ruler } from "lucide-react";
-import { calculateNutritionNeeds } from "../utils/nutritionCalculator";
+import { calculateNutritionNeeds, calculateAverageNutrition, calculateMealContribution } from "../utils/nutritionCalculator";
 import NutritionResults from "./NutritionResults";
 import AverageNutritionCalculator from "./AverageNutritionCalculator";
 import MealContributionCalculator from "./MealContributionCalculator";
@@ -24,6 +24,8 @@ const NutritionCalculator = () => {
   });
   
   const [results, setResults] = useState(null);
+  const [averageResults, setAverageResults] = useState(null);
+  const [mealResults, setMealResults] = useState(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
@@ -42,14 +44,23 @@ const NutritionCalculator = () => {
     setIsCalculating(true);
     
     setTimeout(() => {
-      const calculatedResults = calculateNutritionNeeds({
+      // Individual calculation
+      const individualResults = calculateNutritionNeeds({
         gender: formData.gender,
         weight: parseFloat(formData.weight),
         height: parseFloat(formData.height),
         age: parseInt(formData.age)
       });
       
-      setResults(calculatedResults);
+      // Average calculation
+      const avgResults = calculateAverageNutrition(parseInt(formData.age));
+      
+      // Meal contribution calculation
+      const mealContribution = calculateMealContribution(individualResults);
+      
+      setResults(individualResults);
+      setAverageResults(avgResults);
+      setMealResults({ nutritionNeeds: individualResults, mealContribution });
       setIsCalculating(false);
     }, 500);
   };
@@ -62,6 +73,8 @@ const NutritionCalculator = () => {
       age: ''
     });
     setResults(null);
+    setAverageResults(null);
+    setMealResults(null);
   };
 
   return (
@@ -78,18 +91,10 @@ const NutritionCalculator = () => {
         </div>
 
         <Tabs defaultValue="individual" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Individual
-            </TabsTrigger>
-            <TabsTrigger value="average" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Rata-rata
-            </TabsTrigger>
-            <TabsTrigger value="meals" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Per Waktu Makan
             </TabsTrigger>
             <TabsTrigger value="food" className="flex items-center gap-2">
               <ChefHat className="h-4 w-4" />
@@ -102,7 +107,7 @@ const NutritionCalculator = () => {
           </TabsList>
 
           <TabsContent value="individual">
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="space-y-8">
               {/* Form Input */}
               <Card className="shadow-lg">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-green-600 text-white">
@@ -111,63 +116,65 @@ const NutritionCalculator = () => {
                     Data Diri
                   </CardTitle>
                   <CardDescription className="text-blue-100">
-                    Masukkan data diri Anda untuk menghitung kebutuhan gizi
+                    Masukkan data diri Anda untuk menghitung kebutuhan gizi individual, rata-rata, dan kontribusi per waktu makan
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Jenis Kelamin</Label>
-                    <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih jenis kelamin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Laki-laki</SelectItem>
-                        <SelectItem value="female">Perempuan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">Jenis Kelamin</Label>
+                      <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih jenis kelamin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Laki-laki</SelectItem>
+                          <SelectItem value="female">Perempuan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="age">Umur (tahun)</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      placeholder="Masukkan umur"
-                      value={formData.age}
-                      onChange={(e) => handleInputChange('age', e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Umur (tahun)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        placeholder="Masukkan umur"
+                        value={formData.age}
+                        onChange={(e) => handleInputChange('age', e.target.value)}
+                        className="text-lg"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="weight" className="flex items-center gap-2">
-                      <Scale className="h-4 w-4" />
-                      Berat Badan (kg)
-                    </Label>
-                    <Input
-                      id="weight"
-                      type="number"
-                      placeholder="Masukkan berat badan"
-                      value={formData.weight}
-                      onChange={(e) => handleInputChange('weight', e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weight" className="flex items-center gap-2">
+                        <Scale className="h-4 w-4" />
+                        Berat Badan (kg)
+                      </Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        placeholder="Masukkan berat badan"
+                        value={formData.weight}
+                        onChange={(e) => handleInputChange('weight', e.target.value)}
+                        className="text-lg"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="height" className="flex items-center gap-2">
-                      <Ruler className="h-4 w-4" />
-                      Tinggi Badan (cm)
-                    </Label>
-                    <Input
-                      id="height"
-                      type="number"
-                      placeholder="Masukkan tinggi badan"
-                      value={formData.height}
-                      onChange={(e) => handleInputChange('height', e.target.value)}
-                      className="text-lg"
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="height" className="flex items-center gap-2">
+                        <Ruler className="h-4 w-4" />
+                        Tinggi Badan (cm)
+                      </Label>
+                      <Input
+                        id="height"
+                        type="number"
+                        placeholder="Masukkan tinggi badan"
+                        value={formData.height}
+                        onChange={(e) => handleInputChange('height', e.target.value)}
+                        className="text-lg"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex gap-3 pt-4">
@@ -176,7 +183,7 @@ const NutritionCalculator = () => {
                       className="flex-1 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
                       disabled={isCalculating}
                     >
-                      {isCalculating ? 'Menghitung...' : 'Hitung Kebutuhan Gizi'}
+                      {isCalculating ? 'Menghitung...' : 'Hitung Semua Kebutuhan Gizi'}
                     </Button>
                     <Button 
                       onClick={resetForm} 
@@ -190,32 +197,177 @@ const NutritionCalculator = () => {
               </Card>
 
               {/* Results */}
-              <div>
-                {results ? (
-                  <NutritionResults results={results} />
-                ) : (
-                  <Card className="shadow-lg h-full flex items-center justify-center">
-                    <CardContent className="text-center py-12">
-                      <Calculator className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                        Hasil Perhitungan
-                      </h3>
-                      <p className="text-gray-500">
-                        Lengkapi form di sebelah kiri untuk melihat kebutuhan gizi harian Anda
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              {results ? (
+                <div className="space-y-8">
+                  {/* Individual Results */}
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <User className="text-blue-600" />
+                      Kebutuhan Gizi Individual
+                    </h2>
+                    <NutritionResults results={results} />
+                  </div>
+
+                  {/* Average Results */}
+                  {averageResults && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Users className="text-purple-600" />
+                        Kebutuhan Gizi Rata-rata
+                      </h2>
+                      <NutritionResults results={averageResults} />
+                    </div>
+                  )}
+
+                  {/* Meal Contribution Results */}
+                  {mealResults && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Clock className="text-orange-600" />
+                        Kontribusi Energi dan Gizi per Waktu Makan
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Kontribusi Energi */}
+                        <Card className="shadow-lg">
+                          <CardHeader className="bg-yellow-500 text-white">
+                            <CardTitle>Kontribusi Energi (kkal)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span>Sarapan (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.energy.breakfast}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Siang (30%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.energy.lunch}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Malam (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.energy.dinner}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Pagi (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.energy.morningSnack}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Sore (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.energy.afternoonSnack}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Kontribusi Protein */}
+                        <Card className="shadow-lg">
+                          <CardHeader className="bg-red-500 text-white">
+                            <CardTitle>Kontribusi Protein (g)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span>Sarapan (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.protein.breakfast}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Siang (30%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.protein.lunch}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Malam (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.protein.dinner}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Pagi (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.protein.morningSnack}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Sore (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.protein.afternoonSnack}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Kontribusi Karbohidrat */}
+                        <Card className="shadow-lg">
+                          <CardHeader className="bg-amber-500 text-white">
+                            <CardTitle>Kontribusi Karbohidrat (g)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span>Sarapan (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.carbohydrate.breakfast}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Siang (30%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.carbohydrate.lunch}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Malam (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.carbohydrate.dinner}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Pagi (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.carbohydrate.morningSnack}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Sore (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.carbohydrate.afternoonSnack}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Kontribusi Air */}
+                        <Card className="shadow-lg">
+                          <CardHeader className="bg-blue-500 text-white">
+                            <CardTitle>Kontribusi Air (ml)</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span>Sarapan (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.water.breakfast}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Siang (30%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.water.lunch}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Makan Malam (25%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.water.dinner}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Pagi (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.water.morningSnack}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Snack Sore (10%):</span>
+                                <span className="font-bold">{mealResults.mealContribution.water.afternoonSnack}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Card className="shadow-lg h-64 flex items-center justify-center">
+                  <CardContent className="text-center py-12">
+                    <Calculator className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                      Hasil Perhitungan Lengkap
+                    </h3>
+                    <p className="text-gray-500">
+                      Lengkapi form di atas untuk melihat kebutuhan gizi individual, rata-rata, dan kontribusi per waktu makan
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="average">
-            <AverageNutritionCalculator />
-          </TabsContent>
-
-          <TabsContent value="meals">
-            <MealContributionCalculator />
           </TabsContent>
 
           <TabsContent value="food">
